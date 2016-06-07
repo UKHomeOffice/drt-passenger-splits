@@ -74,16 +74,16 @@ class ChromaConnectorIntegrationSpec extends TestKit(ActorSystem())
     "given a token " in {
       val tp = tokenPipeline
       val eventualToken: Future[ChromaToken] = tp(Post(tokenUrl, chromaTokenRequestCredentials))
+      def eventualLiveFlights(accessToken: String) = livePipeline(accessToken)(Get(url))
+
       val ss: Future[Seq[ChromaSingleFlight]] = for {
         t <- eventualToken
-        cr <- livePipeline(t.access_token)(Get(url))
+        cr <- eventualLiveFlights(t.access_token)
       } yield {
         println(cr)
         cr
       }
-      Await.result(ss, 10 seconds)
-
-      false
+      Await.result(ss, 10 seconds) must not beEmpty
     }
   }
 }
