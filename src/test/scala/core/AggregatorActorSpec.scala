@@ -1,30 +1,17 @@
 package core
 
-import java.util.UUID
-
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
-import org.parboiled.parserunners.ProfilingParseRunner.Report
 import org.specs2.mutable.SpecificationLike
-import spray.http.DateTime
-import spray.http.DateTime
-import spray.http.DateTime
-import spray.http.DateTime
-import spray.http.DateTime
 import spray.http.DateTime
 
 class AggregatorActorSpec extends
   TestKit(ActorSystem()) with SpecificationLike with ImplicitSender with CoreActors with Core {
   test =>
   import AggregationActor._
-  //  sequential
-
-  case class MyContext() {
-    implicit def system = test.system
-  }
+  isolated
 
   "Aggregator should take messages about flightInfo" >> {
-
     "Accept a single flight info" in {
       aggregator ! FlightInfo("BA123", DateTime(3000), None)
       aggregator ! ReportFlightCode("BA123")
@@ -50,7 +37,7 @@ class AggregatorActorSpec extends
 
   }
 
-  isolated
 }
+
 
 

@@ -1,4 +1,4 @@
-name := """lhr-live"""
+name := """ltn-chroma"""
 
 organization := """uk.gov.homeoffice.borderforce"""
 
@@ -18,6 +18,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-slf4j" % "2.4.6",
   "ch.qos.logback" % "logback-classic" % "1.0.13",
   "io.spray" %% "spray-can" % sprayVersion,
+  "io.spray" %% "spray-client" % sprayVersion,
   "io.spray" %% "spray-routing" % sprayVersion,
   "io.spray" %% "spray-json" % "1.3.2",
   "org.specs2" %% "specs2-core" % "3.8.3" % "test",

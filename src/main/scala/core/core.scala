@@ -26,7 +26,7 @@ trait BootedCore extends Core {
   /**
    * Ensure that the constructed ActorSystem is shut down when the JVM shuts down
    */
-  sys.addShutdownHook(system.shutdown())
+  sys.addShutdownHook(system.terminate())
 
 }
 
@@ -36,7 +36,7 @@ trait BootedCore extends Core {
  */
 trait CoreActors {
   this: Core =>
-
+//  val httpPollingActor = system.actorOf(Props[HttpConsumerActor])
   val aggregator = system.actorOf(Props[AggregationActor])
   val registration = system.actorOf(Props[RegistrationActor])
   val messenger    = system.actorOf(Props[MessengerActor])

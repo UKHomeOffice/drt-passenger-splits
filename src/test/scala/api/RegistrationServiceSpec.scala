@@ -20,12 +20,11 @@ class RegistrationServiceSpec extends Specification with Directives with Specs2R
   }
 }
 
-class AggregationServiceSpec extends Specification with Directives with Specs2RouteTest
-  {
+class AggregationServiceSpec extends Specification with Directives with Specs2RouteTest {
   def actorRefFactory = system
 
-    private val aggregationRef: ActorRef = system.actorOf(Props[AggregationActor])
-    val serviceAgg = new AggregationReportingService(aggregationRef)
+  private val aggregationRef: ActorRef = system.actorOf(Props[AggregationActor])
+  val serviceAgg = new AggregationReportingService(aggregationRef)
 
   "The routing infrastructure should support" >> {
     "the most simple and direct route" in {
