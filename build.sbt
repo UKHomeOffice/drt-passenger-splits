@@ -25,6 +25,7 @@ libraryDependencies ++= Seq(
   //https://groups.google.com/forum/#!topic/spray-user/2T6SBp4OJeI for this exclusion
   "io.spray" %% "spray-testkit" % sprayVersion % "test"  exclude("org.specs2", "specs2_2.11"),
   "com.typesafe.akka" %% "akka-testkit" % "2.4.6" % "test",
+  "com.typesafe" % "config" % "1.3.0",
   "com.novocode" % "junit-interface" % "0.7" % "test->default"
 )
 
