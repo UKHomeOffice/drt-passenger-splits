@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.{ConfigFactory, Config}
 import core.ChromaParser.{ChromaSingleFlight, ChromaToken}
+import http.ProdSendAndReceive
 import org.specs2.mutable.SpecificationLike
 import spray.client.pipelining._
 import spray.http.HttpHeaders.{Authorization, Accept}
@@ -11,6 +12,19 @@ import spray.http._
 import spray.json.DefaultJsonProtocol
 import spray.httpx.SprayJsonSupport._
 import scala.concurrent.{ExecutionContext, Await, Future}
+
+trait ChromaConfig {
+  lazy val config = ConfigFactory.load()
+
+  val chromaTokenRequestCredentials = FormData(Seq(
+    "username" -> config.getString("chromausername"),
+    "password" -> config.getString("chromapassword"),
+    "grant_type" -> "password"
+  ))
+  val tokenUrl: String = "https://ukbf-api.magairports.com/chroma/token"
+
+  val url: String = "https://ukbf-api.magairports.com/chroma/live/man"
+}
 
 class ChromaConnectorIntegrationSpec extends TestKit(ActorSystem())
   with SpecificationLike
@@ -30,60 +44,32 @@ class ChromaConnectorIntegrationSpec extends TestKit(ActorSystem())
     implicit val chromaSingleFlightFormat = jsonFormat20(ChromaSingleFlight)
   }
 
-  import ChromaParserProtocol._
-
-  val tokenPipeline: HttpRequest => Future[ChromaToken] = (
-    addHeader(Accept(MediaTypes.`application/json`))
-      ~> sendReceive
-      ~> unmarshal[ChromaToken]
-    )
-
-  def livePipeline(token: String): HttpRequest => Future[List[ChromaSingleFlight]] = {
-    println(s"Sending request for $token")
-    (
-      addHeaders(
-        Accept(MediaTypes.`application/json`),
-        Authorization(OAuth2BearerToken(token)))
-        ~> sendReceive
-        ~> unmarshal[List[ChromaSingleFlight]]
-      )
-  }
 
   // to get the username and password you need an application.conf
   // that file shouldn't be checked in because of 12-factor appiness
-  lazy val config = ConfigFactory.load()
 
-  val chromaTokenRequestCredentials = FormData(Seq(
-    "username" -> config.getString("chromausername"),
-    "password" -> config.getString("chromapassword"),
-    "grant_type" -> "password"
-  ))
-  private val tokenUrl: String = "https://ukbf-api.magairports.com/chroma/token"
-
-  private val url: String = "https://ukbf-api.magairports.com/chroma/live/man"
 
   "A Chroma client" >> {
     "be able to get a token" in {
-      val response: Future[ChromaToken] = tokenPipeline(Post(tokenUrl, chromaTokenRequestCredentials))
+      val sut = new ChromaParser with ProdSendAndReceive {
+        implicit val system: ActorSystem = test.system
+        private val pipeline = tokenPipeline
+        val response: Future[ChromaToken] = pipeline(Post(tokenUrl, chromaTokenRequestCredentials))
 
-      response onSuccess {
-        case s => println(s)
+        response onSuccess {
+          case s => println(s)
+        }
+
+        def await = Await.result(response, 10 seconds) must not equalTo (ChromaToken("", "", 0))
       }
-      Await.result(response, 10 seconds) must not equalTo (ChromaToken("", "", 0))
+      sut.await
     }
     "given a token " in {
-      val tp = tokenPipeline
-      val eventualToken: Future[ChromaToken] = tp(Post(tokenUrl, chromaTokenRequestCredentials))
-      def eventualLiveFlights(accessToken: String) = livePipeline(accessToken)(Get(url))
-
-      val ss: Future[Seq[ChromaSingleFlight]] = for {
-        t <- eventualToken
-        cr <- eventualLiveFlights(t.access_token)
-      } yield {
-        println(cr)
-        cr
+      val sut = new ChromaParser with ProdSendAndReceive {
+        implicit val system: ActorSystem = test.system
+//        private val pipeline = tokenPipeline
       }
-      Await.result(ss, 10 seconds) must not beEmpty
+      Await.result(sut.currentFlights, 10 seconds) must not beEmpty
     }
   }
 }

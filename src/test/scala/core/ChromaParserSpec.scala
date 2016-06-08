@@ -1,11 +1,13 @@
 package core
 
 import akka.actor.ActorSystem
-import core.ChromaParser.{ChromaSingleFlight, ChromaParserProtocol}
+import core.ChromaParser.{ChromaSingleFlight, ChromaToken, ChromaParserProtocol}
+import http.WithSendAndReceive
+import org.slf4j.LoggerFactory
 import org.specs2.mutable.SpecificationLike
 import spray.client.pipelining._
 import spray.http.HttpHeaders.{Accept, Authorization}
-import spray.http.{HttpRequest, MediaTypes, OAuth2BearerToken}
+import spray.http.{HttpResponse, HttpRequest, MediaTypes, OAuth2BearerToken}
 import spray.httpx.SprayJsonSupport._
 import spray.json.DefaultJsonProtocol
 
@@ -42,35 +44,53 @@ object ChromaParser {
   }
 
 }
-
-abstract class ChromaParser {
-  //
+trait ChromaParser extends ChromaConfig with WithSendAndReceive {
+//  self: WithSendAndReceive =>
   implicit val system: ActorSystem
 
   import system.dispatcher
 
-  //  implicit def executionContext: ExecutionContext
+  import ChromaParserProtocol._
 
-  //  implicit def dispatcher: ExecutionContextExecutor
-  import ChromaParser._
-  import ChromaParser.ChromaParserProtocol._
+  def log = LoggerFactory.getLogger(getClass)
 
-  def tokenPipeline(implicit ec: ExecutionContext): HttpRequest => Future[ChromaToken] = (
+  def tokenPipeline: HttpRequest => Future[ChromaToken] = (
     addHeader(Accept(MediaTypes.`application/json`))
-      ~> sendReceive
+      ~> sendAndReceive
       ~> unmarshal[ChromaToken]
     )
 
   def livePipeline(token: String): HttpRequest => Future[List[ChromaSingleFlight]] = {
     println(s"Sending request for $token")
+    val logRequest: HttpRequest => HttpRequest = { r => log.debug(r.toString); r }
+    val logResponse: HttpResponse => HttpResponse = {
+      resp =>
+        log.info("Response Object: "  + resp); resp
+    }
+    val logUnMarshalled: List[ChromaSingleFlight] => List[ChromaSingleFlight] = { resp => log.info("Unmarshalled Response Object: " + resp); resp }
+
     (
-      addHeaders(
-        Accept(MediaTypes.`application/json`),
-        Authorization(OAuth2BearerToken(token)))
+      addHeaders(Accept(MediaTypes.`application/json`), Authorization(OAuth2BearerToken(token)))
+        ~> logRequest
         ~> sendReceive
+        ~> logResponse
         ~> unmarshal[List[ChromaSingleFlight]]
+        ~> logUnMarshalled
       )
   }
+
+  def currentFlights: Future[Seq[ChromaSingleFlight]] = {
+    val eventualToken: Future[ChromaToken] = tokenPipeline(Post(tokenUrl, chromaTokenRequestCredentials))
+    def eventualLiveFlights(accessToken: String) = livePipeline(accessToken)(Get(url))
+
+    for {
+      t <- eventualToken
+      cr <- eventualLiveFlights(t.access_token)
+    } yield {
+      cr
+    }
+  }
+
 }
 
 class ChromaParserSpec extends
