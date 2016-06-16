@@ -10,6 +10,7 @@ import awscala.s3.{S3Object, S3ObjectSummary, Bucket, S3}
 import com.amazonaws.services.s3.model.S3ObjectInputStream
 import core.ChromaParser.{ChromaSingleFlight, ChromaToken, ChromaParserProtocol}
 import core.PassengerInfoParser.PassengerInfo
+import core.ZipUtils.UnzippedFileContent
 import http.WithSendAndReceive
 import org.slf4j.LoggerFactory
 import org.specs2.mutable.SpecificationLike
@@ -24,20 +25,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Success, Try}
-object ZipUtils {
-  def getZipEntry(zis: ZipInputStream): String = {
-    val buffer = new Array[Byte](4096)
-    val stringBuffer = new ArrayBuffer[Byte]()
-    var len: Int = zis.read(buffer)
 
-    while (len > 0) {
-      stringBuffer ++= buffer.take(len)
-      len = zis.read(buffer)
-    }
-    val content: String = new String(stringBuffer.toArray, UTF_8)
-    (content)
-  }
-}
 object ChromaParser {
 
   case class ChromaToken(access_token: String, token_type: String, expires_in: Int)
@@ -251,7 +239,7 @@ class S3IntegrationSpec extends TestKit(ActorSystem())
     val bucketName: String = "drt-deveu-west-1"
     val result = Bucket(bucketName)
     val toList: Stream[Either[String, S3ObjectSummary]] = result.ls("")
-    val objects = toList collect {
+    val objects: Stream[Future[Option[(String, List[UnzippedFileContent])]]] = toList collect {
       //      case Left(keyName) => println("key:", keyName)
       case Right(so) =>
         Future {
@@ -261,19 +249,7 @@ class S3IntegrationSpec extends TestKit(ActorSystem())
             zippedFileStream =>
               val unzippedStream: ZipInputStream = new ZipInputStream(zippedFileStream)
 
-              var ze: ZipEntry = unzippedStream.getNextEntry()
-              var lb: List[(String, String, String)] = Nil
-
-              while (ze != null) {
-                val name: String = ze.getName
-                val entry: String = ZipUtils.getZipEntry(unzippedStream)
-                lb = (so.getKey, name, entry) :: lb
-                ze = unzippedStream.getNextEntry()
-              }
-
-              unzippedStream.closeEntry()
-              unzippedStream.close()
-              lb
+              (so.getKey, ZipUtils.unzipAllFilesInStream(unzippedStream))
           }
         }
     }
@@ -286,13 +262,14 @@ class S3IntegrationSpec extends TestKit(ActorSystem())
 
     val res: Stream[Future[List[(String, Try[Iterable[(String, List[PassengerInfo], Int)]])]]] = objects.map { future =>
       val futureMapped = future collect {
-        case Some(l) => l map { file =>
+
+        case Some(l) => l._2 map { file =>
           println("=" * 80)
-          val zipFileName: String = file._1
+          val zipFileName: String = l._1
           println(zipFileName)
-          val zipEntryFileName: String = file._2
+          val zipEntryFileName: String = file.filename
           println(zipEntryFileName)
-          val parsed: JsValue = file._3.parseJson
+          val parsed: JsValue = file.content.parseJson
           val triedPassengerInfoResponse: Try[FlightPassengerInfoResponse] = Try(parsed.convertTo[FlightPassengerInfoResponse])
           (zipFileName + ":" + zipEntryFileName -> triedPassengerInfoResponse.map { passengerInfoResponse =>
             val passengerListByCountryCode = passengerInfoResponse.PassengerList.groupBy(_.DocumentIssuingCountryCode)
