@@ -1,6 +1,6 @@
 package api
 
-import core.AggregationActor.{FlightInfo, ReportFlightCode}
+import core.FlightPassengerInfoRouter.{FlightSplit, ReportFlightCode}
 import spray.routing.Directives
 import scala.concurrent.ExecutionContext
 import akka.actor.ActorRef
@@ -92,8 +92,8 @@ class AggregationReportingService(aggregation: ActorRef)(implicit executionConte
 //        }
 //      }
     }
-    implicit object FlightInfoJsonFormat extends JsonWriter[FlightInfo] {
-      def write(obj: FlightInfo) = JsString("hellobob")
+    implicit object FlightInfoJsonFormat extends JsonWriter[FlightSplit] {
+      def write(obj: FlightSplit) = JsString("hellobob")
     }
 //    implicit val flightInfoFormat = jsonFormat3(FlightInfo)
 
@@ -105,7 +105,7 @@ class AggregationReportingService(aggregation: ActorRef)(implicit executionConte
     path("flight" / Segment) {
       (flightCode) =>
         get {
-          complete((aggregation ? ReportFlightCode(flightCode)).mapTo[List[FlightInfo]]
+          complete((aggregation ? ReportFlightCode(flightCode)).mapTo[List[FlightSplit]]
               .map { _.map(_.toJson).mkString("[",",", "]") }
           )
         }

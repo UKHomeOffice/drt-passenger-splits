@@ -1,5 +1,6 @@
 package core
 
+import java.io.Closeable
 import java.nio.charset.StandardCharsets._
 import java.util.zip.{ZipEntry, ZipInputStream}
 
@@ -9,23 +10,27 @@ object ZipUtils {
 
   case class UnzippedFileContent(filename: String, content: String)
 
-  def unzipAllFilesInStream(unzippedStream: ZipInputStream): Stream[UnzippedFileContent] = {
+  def usingZip[R <: Closeable, T](unzippedStream: R)(f: (R) => T) = {
     try {
-      unzipAllFilesInStream(unzippedStream, unzippedStream.getNextEntry)
+      f(unzippedStream)
     } finally {
-      unzippedStream.closeEntry()
       unzippedStream.close()
     }
   }
 
-  def unzipAllFilesInStream(unzippedStream: ZipInputStream, ze: ZipEntry): Stream[UnzippedFileContent] = {
-    if (ze == null) {
-      Stream.empty
-    }
-    else {
-      val name: String = ze.getName
-      val entry: String = ZipUtils.getZipEntry(unzippedStream)
-      UnzippedFileContent(name, entry) #:: unzipAllFilesInStream(unzippedStream, unzippedStream.getNextEntry)
+  def unzipAllFilesInStream(unzippedStream: ZipInputStream): Stream[UnzippedFileContent] = {
+    unzipAllFilesInStream(unzippedStream, Option(unzippedStream.getNextEntry))
+  }
+
+  def unzipAllFilesInStream(unzippedStream: ZipInputStream, ze: Option[ZipEntry]): Stream[UnzippedFileContent] = {
+    ze match {
+      case None => Stream.empty
+      case Some(ze) =>
+        val name: String = ze.getName
+        val entry: String = ZipUtils.getZipEntry(unzippedStream)
+        val maybeEntry1: Option[ZipEntry] = Option(unzippedStream.getNextEntry)
+        UnzippedFileContent(name, entry) #::
+          unzipAllFilesInStream(unzippedStream, maybeEntry1)
     }
   }
 

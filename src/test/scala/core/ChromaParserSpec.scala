@@ -8,8 +8,9 @@ import akka.actor.ActorSystem
 import akka.testkit.TestKit
 import awscala.s3.{S3Object, S3ObjectSummary, Bucket, S3}
 import com.amazonaws.services.s3.model.S3ObjectInputStream
-import core.ChromaParser.{ChromaSingleFlight, ChromaToken, ChromaParserProtocol}
-import core.PassengerInfoParser.PassengerInfo
+import parsing.{PassengerInfoParser, ChromaParser}
+import ChromaParser.{ChromaSingleFlight, ChromaToken, ChromaParserProtocol}
+import PassengerInfoParser.PassengerInfo
 import core.ZipUtils.UnzippedFileContent
 import http.WithSendAndReceive
 import org.slf4j.LoggerFactory
@@ -26,37 +27,7 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Success, Try}
 
-object ChromaParser {
 
-  case class ChromaToken(access_token: String, token_type: String, expires_in: Int)
-
-  case class ChromaSingleFlight(Operator: String,
-                                Status: String,
-                                EstDT: String,
-                                ActDT: String,
-                                EstChoxDT: String,
-                                ActChoxDT: String,
-                                Gate: String,
-                                Stand: String,
-                                MaxPax: Int,
-                                ActPax: Int,
-                                TranPax: Int,
-                                RunwayID: String,
-                                BaggageReclaimId: String,
-                                FlightID: Int,
-                                AirportID: String,
-                                Terminal: String,
-                                ICAO: String,
-                                IATA: String,
-                                Origin: String,
-                                SchDT: String)
-
-  object ChromaParserProtocol extends DefaultJsonProtocol {
-    implicit val chromaTokenFormat = jsonFormat3(ChromaToken)
-    implicit val chromaSingleFlightFormat = jsonFormat20(ChromaSingleFlight)
-  }
-
-}
 
 //trait ChromaParser extends ChromaConfig with WithSendAndReceive {
 ////  self: WithSendAndReceive =>

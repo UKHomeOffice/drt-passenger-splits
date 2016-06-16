@@ -1,8 +1,8 @@
 package api
 
 import akka.actor.{ActorRef, Props}
-import core.AggregationActor
-import core.AggregationActor.FlightInfo
+import core.FlightPassengerInfoRouter
+import parsing.PassengerInfoParser.FlightPassengerInfoResponse
 import spray.testkit.Specs2RouteTest
 import spray.routing.Directives
 import org.specs2.mutable.Specification
@@ -23,12 +23,12 @@ class RegistrationServiceSpec extends Specification with Directives with Specs2R
 class AggregationServiceSpec extends Specification with Directives with Specs2RouteTest {
   def actorRefFactory = system
 
-  private val aggregationRef: ActorRef = system.actorOf(Props[AggregationActor])
+  private val aggregationRef: ActorRef = system.actorOf(Props[FlightPassengerInfoRouter])
   val serviceAgg = new AggregationReportingService(aggregationRef)
 
   "The routing infrastructure should support" >> {
     "the most simple and direct route" in {
-      aggregationRef ! FlightInfo("BA123", DateTime(3000), None)
+      aggregationRef ! FlightPassengerInfoResponse("LHR", "123", "BA", "2015-05-01", Nil)
       Get("/flight/BA123") ~> serviceAgg.route ~> check {
         responseAs[String].parseJson ===
           """[{"type":"flightInfo","flightCode":"BA123", "scheduledDateTime": "1970-01-01T00:00:03",
