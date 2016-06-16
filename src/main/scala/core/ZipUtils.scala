@@ -6,21 +6,27 @@ import java.util.zip.{ZipEntry, ZipInputStream}
 import scala.collection.mutable.ArrayBuffer
 
 object ZipUtils {
-  case class UnzippedFileContent(filename: String, content: String)
-  def unzipAllFilesInStream(unzippedStream: ZipInputStream): List[UnzippedFileContent] = {
-    var ze: ZipEntry = unzippedStream.getNextEntry()
-    var lb: List[UnzippedFileContent] = Nil
 
-    while (ze != null) {
+  case class UnzippedFileContent(filename: String, content: String)
+
+  def unzipAllFilesInStream(unzippedStream: ZipInputStream): Stream[UnzippedFileContent] = {
+    try {
+      unzipAllFilesInStream(unzippedStream, unzippedStream.getNextEntry)
+    } finally {
+      unzippedStream.closeEntry()
+      unzippedStream.close()
+    }
+  }
+
+  def unzipAllFilesInStream(unzippedStream: ZipInputStream, ze: ZipEntry): Stream[UnzippedFileContent] = {
+    if (ze == null) {
+      Stream.empty
+    }
+    else {
       val name: String = ze.getName
       val entry: String = ZipUtils.getZipEntry(unzippedStream)
-      lb = UnzippedFileContent(name, entry) :: lb
-      ze = unzippedStream.getNextEntry()
+      UnzippedFileContent(name, entry) #:: unzipAllFilesInStream(unzippedStream, unzippedStream.getNextEntry)
     }
-
-    unzippedStream.closeEntry()
-    unzippedStream.close()
-    lb
   }
 
   def getZipEntry(zis: ZipInputStream): String = {

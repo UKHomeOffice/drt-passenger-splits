@@ -239,7 +239,7 @@ class S3IntegrationSpec extends TestKit(ActorSystem())
     val bucketName: String = "drt-deveu-west-1"
     val result = Bucket(bucketName)
     val toList: Stream[Either[String, S3ObjectSummary]] = result.ls("")
-    val objects: Stream[Future[Option[(String, List[UnzippedFileContent])]]] = toList collect {
+    val objects: Stream[Future[Option[(String, Stream[UnzippedFileContent])]]] = toList collect {
       //      case Left(keyName) => println("key:", keyName)
       case Right(so) =>
         Future {
@@ -260,7 +260,7 @@ class S3IntegrationSpec extends TestKit(ActorSystem())
     import PassengerInfoParser._
     import FlightPassengerInfoProtocol._
 
-    val res: Stream[Future[List[(String, Try[Iterable[(String, List[PassengerInfo], Int)]])]]] = objects.map { future =>
+    val res: Stream[Future[Stream[(String, Try[Iterable[(String, List[PassengerInfo], Int)]])]]] = objects.map { future =>
       val futureMapped = future collect {
 
         case Some(l) => l._2 map { file =>
