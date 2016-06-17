@@ -7,4 +7,3 @@ performs some data crunching, and then provides a rest query endpoint so that ot
 What is the paxSplit (passenger desk distribution) for flight BA123 @  2016-06-03 14:45
 
 
-
