@@ -18,14 +18,17 @@ import spray.json._
 import DefaultJsonProtocol._
 
 class FlightPassengerInfoRouter extends Actor {
+  val id = getClass.toString
   var myFlights = List[FlightPassengerInfoResponse]()
 
   def receive = {
     case info: FlightPassengerInfoResponse =>
       println("Got new passenger info", info)
       myFlights = info :: (myFlights filterNot (_.flightCode == info.flightCode))
-    case ReportFlightSplit(_, _, _) =>
-      println("Report flight split!")
+    case ReportFlightSplit(carrierCode, flightCode, _) =>
+      println(id, "Report flight split!")
+      val matchingFlights = myFlights.filter((flight)=> flight.flightCode == flightCode && carrierCode == flight.CarrierCode)
+
       sender ! FlightSplit("LGW", "12345", Map("E-GATE" -> 0.20)) :: Nil
     case ReportFlightCode(flightCode) =>
       val matchingFlights: List[FlightPassengerInfoResponse] = myFlights.filter(_.flightCode == flightCode)

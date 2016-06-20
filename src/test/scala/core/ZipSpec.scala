@@ -8,6 +8,7 @@ import org.specs2.matcher.Matchers
 import org.specs2.mutable.Specification
 import parsing.PassengerInfoParser
 
+
 class ZipSpec extends Specification with Matchers {
 
   import spray.json._
@@ -22,7 +23,8 @@ class ZipSpec extends Specification with Matchers {
           val unzippedStream: Stream[UnzippedFileContent] = ZipUtils.unzipAllFilesInStream(zip)
           unzippedStream.toList
       }
-      results.toList.length should beEqualTo(439)
+      val numberOfFIlesInZip: Int = results.toList.length
+      numberOfFIlesInZip should beEqualTo(59)
     }
     "can parse from the zipped file" in {
       val results = ZipUtils.usingZip(new ZipInputStream(openResourceZip)) {
@@ -33,8 +35,8 @@ class ZipSpec extends Specification with Matchers {
           }
       }
       results.toList match {
-        case ("drt_151124_203000_U25416_CI_6834.json",
-        FlightPassengerInfoResponse("LGW", "5416", "U2", "2015-11-24", _)) :: Nil => true
+        case ("drt_160302_165000_SU2584_CI_0915.json",
+        FlightPassengerInfoResponse("LHR", "2584", "SU", "2016-03-02", _)) :: Nil => true
         case default =>
           assert(false, "Didn't match expectation, got: " + default)
           false
@@ -49,11 +51,11 @@ class ZipSpec extends Specification with Matchers {
           }
       }
       results.toList match {
-          //it is not clear to me why I'm getting this file, which is not alphabetically first
-          // will it matter? do we care?
-        case ("drt_151124_203000_U25416_CI_6834.json",
-        FlightPassengerInfoResponse("LGW", "5416", "U2", "2015-11-24",
-        (PassengerInfo("MNE", Some("1931-05-19")) :: passengerInfoTail))) :: Nil => true
+        //it is not clear to me why I'm getting this file, which is not alphabetically first
+        // will it matter? do we care?
+        case ("drt_160302_165000_SU2584_CI_0915.json",
+        FlightPassengerInfoResponse("LHR", "2584", "SU", "2016-03-02",
+        PassengerInfoJson(Some("V"), "GTM", Some("67")) :: passengerInfoTail)) :: Nil => true
         case default =>
           assert(false, "Didn't match expectation, got: " + default)
           false
@@ -62,6 +64,6 @@ class ZipSpec extends Specification with Matchers {
   }
 
   def openResourceZip: InputStream = {
-    getClass.getClassLoader.getResourceAsStream("s3content/zippedtest/PREPRODdrt_dq_160330_145942_0682.zip")
+    getClass.getClassLoader.getResourceAsStream("s3content/zippedtest/drt_dq_160617_165737_5153.zip")
   }
 }

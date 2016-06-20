@@ -2,19 +2,31 @@ package parsing
 
 import spray.json.DefaultJsonProtocol
 
-object PassengerInfoParser {
+import scala.util.Try
 
-  case class PassengerInfo(DocumentIssuingCountryCode: String, DateOfBirth: Option[String])
+object PassengerInfoParser {
+  case class PassengerInfo(DocumentType: Option[String],
+                               DocumentIssuingCountryCode: String, Age: Option[Int] = None)
+
+  case class PassengerInfoJson(DocumentType: Option[String],
+                           DocumentIssuingCountryCode: String, Age: Option[String] = None){
+    def toPassengerInfo = PassengerInfo(DocumentType, DocumentIssuingCountryCode, Age match {
+      case Some(age) => Try(age.toInt).toOption
+      case None => None
+    })
+  }
+
   case class FlightPassengerInfoResponse(ArrivalPortCode: String,
                                          VoyageNumber: String,
                                          CarrierCode: String,
                                          ScheduledDateOfArrival: String,
-                                         PassengerList: List[PassengerInfo]){
+                                         PassengerList: List[PassengerInfoJson]){
     def flightCode: String = CarrierCode + VoyageNumber
+    def passengerInfos: Seq[PassengerInfo] = PassengerList.map(_.toPassengerInfo)
   }
 
   object FlightPassengerInfoProtocol extends DefaultJsonProtocol {
-    implicit val passengerInfoConverter = jsonFormat2(PassengerInfo)
+    implicit val passengerInfoConverter = jsonFormat3(PassengerInfoJson)
     implicit val flightPassengerInfoResponseConverter = jsonFormat5(FlightPassengerInfoResponse)
   }
 
