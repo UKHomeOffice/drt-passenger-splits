@@ -2,7 +2,7 @@ package api
 
 import akka.actor.ActorRef
 import scala.concurrent.ExecutionContext
-import spray.routing.Directives
+import spray.routing.{Route, Directives}
 import core.MessengerActor
 
 class MessengerService(messenger: ActorRef)(implicit executionContext: ExecutionContext)
@@ -12,7 +12,7 @@ class MessengerService(messenger: ActorRef)(implicit executionContext: Execution
 
   implicit val sendMessageFormat = jsonFormat2(SendMessage)
 
-   val route =
+   val route: Route =
      path("message") {
        post {
          handleWith { sm: SendMessage => messenger ! sm; "{}" }

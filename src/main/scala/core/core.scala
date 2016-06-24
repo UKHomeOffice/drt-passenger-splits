@@ -37,7 +37,7 @@ trait BootedCore extends Core {
 trait CoreActors {
   this: Core =>
 //  val httpPollingActor = system.actorOf(Props[HttpConsumerActor])
-  val aggregator = system.actorOf(Props[FlightPassengerInfoRouter])
+  val aggregator = system.actorOf(Props[PassengerInfoRouter])
   val registration = system.actorOf(Props[RegistrationActor])
   val messenger    = system.actorOf(Props[MessengerActor])
 

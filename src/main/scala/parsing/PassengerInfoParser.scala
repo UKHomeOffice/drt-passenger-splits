@@ -15,19 +15,23 @@ object PassengerInfoParser {
       case None => None
     })
   }
-
-  case class FlightPassengerInfoResponse(ArrivalPortCode: String,
-                                         VoyageNumber: String,
-                                         CarrierCode: String,
-                                         ScheduledDateOfArrival: String,
-                                         PassengerList: List[PassengerInfoJson]){
+  object EventCodes {
+    val DoorsClosed = "DC"
+    val CheckIn = "CI"
+  }
+  case class VoyagePassengerInfo(EventCode: String,
+                                 ArrivalPortCode: String,
+                                 VoyageNumber: String,
+                                 CarrierCode: String,
+                                 ScheduledDateOfArrival: String,
+                                 PassengerList: List[PassengerInfoJson]){
     def flightCode: String = CarrierCode + VoyageNumber
     def passengerInfos: Seq[PassengerInfo] = PassengerList.map(_.toPassengerInfo)
   }
 
   object FlightPassengerInfoProtocol extends DefaultJsonProtocol {
     implicit val passengerInfoConverter = jsonFormat3(PassengerInfoJson)
-    implicit val flightPassengerInfoResponseConverter = jsonFormat5(FlightPassengerInfoResponse)
+    implicit val passengerInfoResponseConverter = jsonFormat6(VoyagePassengerInfo)
   }
 
 }

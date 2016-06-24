@@ -31,12 +31,12 @@ class ZipSpec extends Specification with Matchers {
         zip =>
           val unzippedStream: Stream[UnzippedFileContent] = ZipUtils.unzipAllFilesInStream(zip)
           unzippedStream.take(1).map {
-            fc => (fc.filename, fc.content.parseJson.convertTo[FlightPassengerInfoResponse])
+            fc => (fc.filename, fc.content.parseJson.convertTo[VoyagePassengerInfo])
           }
       }
       results.toList match {
         case ("drt_160302_165000_SU2584_CI_0915.json",
-        FlightPassengerInfoResponse("LHR", "2584", "SU", "2016-03-02", _)) :: Nil => true
+        VoyagePassengerInfo(EventCodes.CheckIn, "LHR", "2584", "SU", "2016-03-02", _)) :: Nil => true
         case default =>
           assert(false, "Didn't match expectation, got: " + default)
           false
@@ -47,14 +47,14 @@ class ZipSpec extends Specification with Matchers {
         zip =>
           val unzippedStream: Stream[UnzippedFileContent] = ZipUtils.unzipAllFilesInStream(zip)
           unzippedStream.take(1).map {
-            fc => (fc.filename, fc.content.parseJson.convertTo[FlightPassengerInfoResponse])
+            fc => (fc.filename, fc.content.parseJson.convertTo[VoyagePassengerInfo])
           }
       }
       results.toList match {
         //it is not clear to me why I'm getting this file, which is not alphabetically first
         // will it matter? do we care?
         case ("drt_160302_165000_SU2584_CI_0915.json",
-        FlightPassengerInfoResponse("LHR", "2584", "SU", "2016-03-02",
+        VoyagePassengerInfo(EventCodes.CheckIn, "LHR", "2584", "SU", "2016-03-02",
         PassengerInfoJson(Some("V"), "GTM", Some("67")) :: passengerInfoTail)) :: Nil => true
         case default =>
           assert(false, "Didn't match expectation, got: " + default)

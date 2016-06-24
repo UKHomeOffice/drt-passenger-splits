@@ -1,4 +1,4 @@
-name := """drt-flight-passenger-splits"""
+name := """drt-passenger-splits"""
 
 organization := """uk.gov.homeoffice.borderforce"""
 

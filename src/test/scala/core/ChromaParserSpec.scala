@@ -133,9 +133,9 @@ class S3IntegrationSpec extends TestKit(ActorSystem())
           val zipEntryFileName: String = file.filename
           println(zipEntryFileName)
           val parsed: JsValue = file.content.parseJson
-          val triedPassengerInfoResponse: Try[FlightPassengerInfoResponse] = Try(parsed.convertTo[FlightPassengerInfoResponse])
-          (zipFileName + ":" + zipEntryFileName -> triedPassengerInfoResponse.map { passengerInfoResponse =>
-            val passengerListByCountryCode = passengerInfoResponse.PassengerList.groupBy(_.DocumentIssuingCountryCode)
+          val triedPassengerInfoResponse: Try[VoyagePassengerInfo] = Try(parsed.convertTo[VoyagePassengerInfo])
+          (zipFileName + ":" + zipEntryFileName -> triedPassengerInfoResponse.map { passengerInfo =>
+            val passengerListByCountryCode = passengerInfo.PassengerList.groupBy(_.DocumentIssuingCountryCode)
             passengerListByCountryCode.map(pair => (pair._1, pair._2, pair._2.length))
           })
         }
