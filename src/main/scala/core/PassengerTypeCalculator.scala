@@ -1,6 +1,84 @@
 package core
 
+import core.PassengerQueueTypes.{QueueType, PaxTypeAndQueueCount}
+import core.PassengerTypeCalculator.PassengerType
+import parsing.PassengerInfoParser.PassengerInfoJson
+
+object PassengerQueueTypes {
+  object Desks {
+    val eeaDesk = 'desk
+    val egate = 'egate
+    val nationalsDesk = 'nationalsDesk
+  }
+
+  object PaxTypes {
+    val EEANONMACHINEREADABLE = "eea-non-machine-readable"
+    val NATIONALVISA = "national-visa"
+    val EEAMACHINEREADABLE = "eea-machine-readable"
+    val NATIONALNONVISA = "national-non-visa"
+  }
+
+  val egatePercentage = 0.6
+
+  type QueueType = Symbol
+  type PaxTypeAndQueue = (PassengerType, QueueType)
+  type PaxTypeAndQueueCount = Map[PaxTypeAndQueue, Int]
+}
+
+trait PassengerQueueCalculator {
+  import PassengerQueueTypes._
+  import PassengerQueueTypes.Desks._
+  import PassengerQueueTypes.PaxTypes._
+
+  def calculateQueuePaxCounts(paxTypeCounts: Map[PassengerType, Int]): PaxTypeAndQueueCount = {
+    val queues: Map[(PassengerType, QueueType), Double] = paxTypeCounts flatMap calculateQueuesFromPaxTypes
+    queues mapValues {
+      _.toInt
+    }
+  }
+
+  def calculateQueuesFromPaxTypes(paxTypeAndCount: (PassengerType, Int)): Seq[((PassengerType, QueueType), Double)] = {
+    paxTypeAndCount match {
+      case (EEANONMACHINEREADABLE, c) =>
+        Seq((EEANONMACHINEREADABLE, eeaDesk) -> c)
+      case (EEAMACHINEREADABLE, paxCount) =>
+        val egatePaxCount = (egatePercentage * paxCount).toInt
+        Seq(
+          (EEAMACHINEREADABLE, eeaDesk) -> (paxCount - egatePaxCount),
+          (EEAMACHINEREADABLE, egate) -> egatePaxCount
+        )
+      case (otherPaxType, c) => Seq((otherPaxType, nationalsDesk) -> c)
+    }
+  }
+
+  type PassengerType = String
+
+  def countPassengerTypes(passengerTypes: Seq[PassengerType]): Map[PassengerType, Int] = {
+    passengerTypes.groupBy((x) => x).mapValues(_.length)
+  }
+
+}
+
+object PassengerQueueCalculator extends PassengerQueueCalculator {
+  def convertPassengerInfoToPaxQueueCounts(ps: Seq[PassengerInfoJson]): PassengerQueueTypes.PaxTypeAndQueueCount = {
+    val paxTypes = PassengerTypeCalculator.paxTypes(ps)
+    val paxTypeCounts = countPassengerTypes(paxTypes)
+    val queuePaxCounts = calculateQueuePaxCounts(paxTypeCounts)
+    queuePaxCounts
+  }
+}
+
+
 object PassengerTypeCalculator {
+  type PassengerType = String
+
+  def paxTypes(passengerInfos: Seq[PassengerInfoJson]) = {
+    passengerInfos.map {
+      (pi) =>
+        paxType(pi.EEAFlag, pi.DocumentIssuingCountryCode, pi.DocumentType)
+    }
+  }
+
 
   object CountryCodes {
     val Austria = "AUT"
@@ -56,12 +134,12 @@ object PassengerTypeCalculator {
 
   val EEA = "EEA"
 
-  def paxType(eeaFlag: String, documentCountry: String, documentType: String) = {
+  def paxType(eeaFlag: String, documentCountry: String, documentType: Option[String]): PassengerType = {
     (eeaFlag, documentCountry, documentType) match {
       case (EEA, country, _) if nonMachineReadableCountries contains (country) => "eea-non-machine-readable"
       case (EEA, country, _) if (EEACountries contains country) => "eea-machine-readable"
-      case ("", country, DocType.Visa)  if !(EEACountries contains country) => "national-visa"
-      case ("", country, DocType.Passport) if !(EEACountries contains country) => "national-non-visa"
+      case ("", country, Some(DocType.Visa)) if !(EEACountries contains country) => "national-visa"
+      case ("", country, Some(DocType.Passport)) if !(EEACountries contains country) => "national-non-visa"
     }
   }
 }

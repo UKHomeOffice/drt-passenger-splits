@@ -1,6 +1,6 @@
 package api
 
-import core.PassengerInfoRouter.{VoyagePaxSplits, ReportFlightCode}
+import core.PassengerInfoRouterActor.{VoyagePaxSplits, ReportFlightCode}
 import spray.routing.Directives
 import scala.concurrent.ExecutionContext
 import akka.actor.ActorRef

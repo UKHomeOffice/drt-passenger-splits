@@ -1,8 +1,9 @@
-package core
+package s3
 
 import java.io.InputStream
 import java.util.zip.ZipInputStream
 
+import core.ZipUtils
 import core.ZipUtils.UnzippedFileContent
 import org.specs2.matcher.Matchers
 import org.specs2.mutable.Specification
@@ -11,10 +12,9 @@ import parsing.PassengerInfoParser
 
 class ZipSpec extends Specification with Matchers {
 
-  import spray.json._
   import PassengerInfoParser._
-  import spray.json.DefaultJsonProtocol
   import FlightPassengerInfoProtocol._
+  import spray.json._
 
   "Can extract file content from a zip" >> {
     "given a zip file inputstream" in {
@@ -36,7 +36,7 @@ class ZipSpec extends Specification with Matchers {
       }
       results.toList match {
         case ("drt_160302_165000_SU2584_CI_0915.json",
-        VoyagePassengerInfo(EventCodes.CheckIn, "LHR", "2584", "SU", "2016-03-02", _)) :: Nil => true
+        VoyagePassengerInfo(EventCodes.CheckIn, "LHR", "2584", "SU", "2016-03-02", "21:05:00", _)) :: Nil => true
         case default =>
           assert(false, "Didn't match expectation, got: " + default)
           false
@@ -51,11 +51,9 @@ class ZipSpec extends Specification with Matchers {
           }
       }
       results.toList match {
-        //it is not clear to me why I'm getting this file, which is not alphabetically first
-        // will it matter? do we care?
         case ("drt_160302_165000_SU2584_CI_0915.json",
-        VoyagePassengerInfo(EventCodes.CheckIn, "LHR", "2584", "SU", "2016-03-02",
-        PassengerInfoJson(Some("V"), "GTM", Some("67")) :: passengerInfoTail)) :: Nil => true
+        VoyagePassengerInfo(EventCodes.CheckIn, "LHR", "2584", "SU", "2016-03-02", "21:05:00",
+        PassengerInfoJson(Some("V"), "GTM", "", Some("67")) :: passengerInfoTail)) :: Nil => true
         case default =>
           assert(false, "Didn't match expectation, got: " + default)
           false
