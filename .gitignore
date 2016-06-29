@@ -16,7 +16,7 @@ gen
 *.xcworkspace
 *.xcuserdatad
 **/target
-/src/test/resources/application.conf
+src/test/resources/application.conf
 target
 *.iml
 project/*.ipr
