@@ -2,6 +2,7 @@ package core
 
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
+import core.PassengerQueueTypes.PaxTypeAndQueueCount
 import core.PassengerSplitsCalculator.PaxSplits
 import org.specs2.matcher.Matchers
 import org.specs2.specification.AfterAll
@@ -28,11 +29,11 @@ class FlightPassengerInfoRouterActorSpec extends
         PassengerInfoJson(Some("P"), "GBR", "EEA", None) :: Nil)
       "When we ask for a report of voyage pax splits then we should see pax splits of the 1 passenger in eeaDesk queue" in {
         aggregator ! ReportVoyagePaxSplit("EZ", "12345", DateTime(2017, 4, 2, 15, 33))
-        val expectedPaxSplits: PassengerQueueTypes.PaxTypeAndQueueCount = Map(
-          (PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.egate) -> 0,
-          (PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.eeaDesk) -> 1
+        val expectedPaxSplits = Seq(
+          PaxTypeAndQueueCount(PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.egate, 0),
+          PaxTypeAndQueueCount(PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.eeaDesk, 1)
         )
-        expectMsg(VoyagePaxSplits("EZ", "12345", expectedPaxSplits) :: Nil)
+        expectMsg(VoyagePaxSplits("LGW", "EZ", "12345", 1, DateTime(2017,4,2,15,33), expectedPaxSplits) :: Nil)
         success
       }
     }
@@ -44,14 +45,15 @@ class FlightPassengerInfoRouterActorSpec extends
             PassengerInfoJson(Some("P"), "NZL", "", None) ::
             Nil)
 
-        aggregator ! ReportVoyagePaxSplit("EZ", "789", DateTime(2015, 6, 1, 13, 55))
+        val scheduleArrivalTime: DateTime = DateTime(2015, 6, 1, 13, 55)
+        aggregator ! ReportVoyagePaxSplit("EZ", "789", scheduleArrivalTime)
 
-        val expectedPaxSplits: PassengerQueueTypes.PaxTypeAndQueueCount = Map(
-          (PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.egate) -> 0,
-          (PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.eeaDesk) -> 1,
-          (PassengerQueueTypes.PaxTypes.NATIONALNONVISA, PassengerQueueTypes.Desks.nationalsDesk) -> 1
+        val expectedPaxSplits = Seq(
+          PaxTypeAndQueueCount(PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.egate, 0),
+          PaxTypeAndQueueCount(PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.eeaDesk, 1),
+          PaxTypeAndQueueCount(PassengerQueueTypes.PaxTypes.NATIONALNONVISA, PassengerQueueTypes.Desks.nationalsDesk, 1)
         )
-        expectMsg(VoyagePaxSplits("EZ", "789", expectedPaxSplits) :: Nil)
+        expectMsg(VoyagePaxSplits("STN", "EZ", "789", 2, scheduleArrivalTime, expectedPaxSplits) :: Nil)
         success
       }
     }
@@ -61,14 +63,14 @@ class FlightPassengerInfoRouterActorSpec extends
           List.tabulate(80)(passengerNumber => PassengerInfoJson(Some("P"), "GBR", "EEA", Some((passengerNumber % 60 + 16).toString))) :::
             List.tabulate(20)(_ => PassengerInfoJson(Some("P"), "NZL", "", None)))
 
-        aggregator ! ReportVoyagePaxSplit("BA", "978", DateTime(2015, 7, 12, 10, 22))
-
-        val expectedPaxSplits: PassengerQueueTypes.PaxTypeAndQueueCount = Map(
-          (PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.egate) -> 48,
-          (PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.eeaDesk) -> 32,
-          (PassengerQueueTypes.PaxTypes.NATIONALNONVISA, PassengerQueueTypes.Desks.nationalsDesk) -> 20
+        val scheduleArrivalDateTime: DateTime = DateTime(2015, 7, 12, 10, 22)
+        aggregator ! ReportVoyagePaxSplit("BA", "978", scheduleArrivalDateTime)
+        val expectedPaxSplits: PassengerQueueTypes.PaxTypeAndQueueCounts = Seq(
+          PaxTypeAndQueueCount(PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.egate, 48),
+          PaxTypeAndQueueCount(PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.eeaDesk, 32),
+          PaxTypeAndQueueCount(PassengerQueueTypes.PaxTypes.NATIONALNONVISA, PassengerQueueTypes.Desks.nationalsDesk, 20)
         )
-        expectMsg(VoyagePaxSplits("BA", "978", expectedPaxSplits) :: Nil)
+        expectMsg(VoyagePaxSplits("STN", "BA", "978", 100, scheduleArrivalDateTime, expectedPaxSplits) :: Nil)
         success
       }
     }

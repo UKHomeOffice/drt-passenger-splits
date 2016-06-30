@@ -1,5 +1,7 @@
 package api
 
+import core.PassengerInfoRouterActor.VoyagePaxSplits
+import core.PassengerQueueTypes.{PaxTypeAndQueueCount, Desks, PaxTypes}
 import org.specs2.mutable.Specification
 import akka.actor.{ActorRef, Props}
 import akka.event.Logging
@@ -42,19 +44,24 @@ class FlightPassengerSplitsReportingServiceSpec extends Specification with After
         serviceAgg.route ~> check {
         log.info("response was" + responseAs[String])
         assert(response.status === StatusCodes.OK)
-        responseAs[String].parseJson ===
-          """
+        val json: JsValue = responseAs[String].parseJson
+
+        val expected =   """
             |[{
             | "destinationPort": "STN",
-            | "flightNumber": "934",
-            | "carrier": "RY",
-            | "scheduledArrival": "2015-02-01T13:48:00",
-            | "totalPax": 1,
-            | "paxSplit": [
-            |     {"paxType": "eea-machine-readable", "queueType": "eea-desk", "numberOfPax": 1}
+            | "voyageNumber": "934",
+            | "carrierCode": "RY",
+            | "scheduledArrivalDateTime": "2015-02-01T13:48:00",
+            | "totalPaxCount": 1,
+            | "paxSplits": [
+            |     {"passengerType": "eea-machine-readable", "queueType": "desk", "paxCount": 1},
+            |     {"passengerType": "eea-machine-readable", "queueType": "egate", "paxCount": 0}
             | ]
             |}]
           """.stripMargin.parseJson
+        println(json.prettyPrint)
+        println(expected.prettyPrint)
+        json should beEqualTo(expected)
       }
     }
   }
@@ -62,7 +69,10 @@ class FlightPassengerSplitsReportingServiceSpec extends Specification with After
   def afterAll() = system.terminate()
 }
 
-class FlightPassengerSplitsReportingServiceUnitTests extends Specification {
+class FlightPassengerSplitsReportingServiceUnitTests extends Specification with DefaultJsonFormats {
+  import spray.json._
+  import FlightPassengerSplitsReportingServiceJsonFormats.ReportingJsonProtocol._
+
   "We can parse a date from a not quite ISO datetime" in {
     Some(DateTime(2016, 5, 1, 13, 44)) should beEqualTo(FlightPassengerSplitsReportingService.parseUrlDateTime("20160501T1344"))
   }
@@ -72,4 +82,11 @@ class FlightPassengerSplitsReportingServiceUnitTests extends Specification {
   "Correct syntax YYYYMMDDTHHMM but bad values will be None" in {
     None should beEqualTo(FlightPassengerSplitsReportingService.parseUrlDateTime("20161509T0103"))
   }
+  "Can produce json string from a VoyagePaxSplit Object" in {
+    val vps = List(VoyagePaxSplits("STN", "RY", "1234", 1, DateTime.now, List(
+      PaxTypeAndQueueCount(PaxTypes.EEAMACHINEREADABLE, Desks.eeaDesk, 1))))
+    println(vps.toJson)
+    true
+  }
+
 }

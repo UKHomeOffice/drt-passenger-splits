@@ -4,6 +4,8 @@ import core.PassengerQueueTypes.{QueueType, PaxTypeAndQueueCount}
 import core.PassengerTypeCalculator.PassengerType
 import parsing.PassengerInfoParser.PassengerInfoJson
 
+import scala.collection.immutable.Iterable
+
 object PassengerQueueTypes {
   object Desks {
     val eeaDesk = 'desk
@@ -21,8 +23,9 @@ object PassengerQueueTypes {
   val egatePercentage = 0.6
 
   type QueueType = Symbol
-  type PaxTypeAndQueue = (PassengerType, QueueType)
-  type PaxTypeAndQueueCount = Map[PaxTypeAndQueue, Int]
+//  type PaxTypeAndQueue = (PassengerType, QueueType)
+  case class PaxTypeAndQueueCount(passengerType: String, queueType: Symbol, paxCount: Int)
+  type PaxTypeAndQueueCounts = Seq[PaxTypeAndQueueCount]
 }
 
 trait PassengerQueueCalculator {
@@ -30,24 +33,22 @@ trait PassengerQueueCalculator {
   import PassengerQueueTypes.Desks._
   import PassengerQueueTypes.PaxTypes._
 
-  def calculateQueuePaxCounts(paxTypeCounts: Map[PassengerType, Int]): PaxTypeAndQueueCount = {
-    val queues: Map[(PassengerType, QueueType), Double] = paxTypeCounts flatMap calculateQueuesFromPaxTypes
-    queues mapValues {
-      _.toInt
-    }
+  def calculateQueuePaxCounts(paxTypeCounts: Map[PassengerType, Int]): PaxTypeAndQueueCounts = {
+    val queues: Iterable[PaxTypeAndQueueCount] = paxTypeCounts flatMap calculateQueuesFromPaxTypes
+    queues.toSeq
   }
 
-  def calculateQueuesFromPaxTypes(paxTypeAndCount: (PassengerType, Int)): Seq[((PassengerType, QueueType), Double)] = {
+  def calculateQueuesFromPaxTypes(paxTypeAndCount: (PassengerType, Int)): Seq[PaxTypeAndQueueCount] = {
     paxTypeAndCount match {
       case (EEANONMACHINEREADABLE, c) =>
-        Seq((EEANONMACHINEREADABLE, eeaDesk) -> c)
+        Seq(PaxTypeAndQueueCount(EEANONMACHINEREADABLE, eeaDesk, c))
       case (EEAMACHINEREADABLE, paxCount) =>
         val egatePaxCount = (egatePercentage * paxCount).toInt
         Seq(
-          (EEAMACHINEREADABLE, eeaDesk) -> (paxCount - egatePaxCount),
-          (EEAMACHINEREADABLE, egate) -> egatePaxCount
+          PaxTypeAndQueueCount(EEAMACHINEREADABLE, eeaDesk,  (paxCount - egatePaxCount)),
+          PaxTypeAndQueueCount(EEAMACHINEREADABLE, egate, egatePaxCount)
         )
-      case (otherPaxType, c) => Seq((otherPaxType, nationalsDesk) -> c)
+      case (otherPaxType, c) => Seq(PaxTypeAndQueueCount(otherPaxType, nationalsDesk, c))
     }
   }
 
@@ -60,7 +61,7 @@ trait PassengerQueueCalculator {
 }
 
 object PassengerQueueCalculator extends PassengerQueueCalculator {
-  def convertPassengerInfoToPaxQueueCounts(ps: Seq[PassengerInfoJson]): PassengerQueueTypes.PaxTypeAndQueueCount = {
+  def convertPassengerInfoToPaxQueueCounts(ps: Seq[PassengerInfoJson]): PassengerQueueTypes.PaxTypeAndQueueCounts = {
     val paxTypes = PassengerTypeCalculator.paxTypes(ps)
     val paxTypeCounts = countPassengerTypes(paxTypes)
     val queuePaxCounts = calculateQueuePaxCounts(paxTypeCounts)

@@ -1,8 +1,8 @@
 package core
 
-import akka.actor.{ActorLogging, Actor}
+import akka.actor.{Actor, ActorLogging}
 import core.PassengerInfoRouterActor.{FlightNotFound, ReportFlightCode, ReportVoyagePaxSplit, VoyagePaxSplits}
-import core.PassengerQueueTypes.PaxTypeAndQueueCount
+import core.PassengerQueueTypes.PaxTypeAndQueueCounts
 import parsing.PassengerInfoParser.VoyagePassengerInfo
 import spray.http.DateTime
 
@@ -10,7 +10,11 @@ object PassengerInfoRouterActor {
 
   case class ReportVoyagePaxSplit(carrierCode: String, voyageNumber: String, scheduledArrivalDateTime: DateTime)
 
-  case class VoyagePaxSplits(carrierCode: String, voyageNumber: String, paxSplits: PaxTypeAndQueueCount)
+  case class VoyagePaxSplits(destinationPort: String, carrierCode: String,
+                             voyageNumber: String,
+                             totalPaxCount: Int,
+                             scheduledArrivalDateTime: DateTime,
+                             paxSplits: PaxTypeAndQueueCounts)
 
   case class ReportFlightCode(flightCode: String)
 
@@ -38,8 +42,11 @@ class PassengerInfoRouterActor extends Actor with PassengerQueueCalculator with 
       log.info(s"Matching flight is ${matchingFlights}")
       matchingFlights match {
         case Some(flight) =>
-          val paxTypeAndQueueCount: PaxTypeAndQueueCount = PassengerQueueCalculator.convertPassengerInfoToPaxQueueCounts(flight.PassengerList)
-          sender ! VoyagePaxSplits(carrierCode, voyageNumber, paxTypeAndQueueCount) :: Nil
+          val paxTypeAndQueueCount: PaxTypeAndQueueCounts = PassengerQueueCalculator.
+            convertPassengerInfoToPaxQueueCounts(flight.PassengerList)
+          sender ! VoyagePaxSplits(flight.ArrivalPortCode,
+            carrierCode, voyageNumber, flight.PassengerList.length, scheduledArrivalDateTime,
+            paxTypeAndQueueCount) :: Nil
         case None =>
           sender ! FlightNotFound(carrierCode, voyageNumber, scheduledArrivalDateTime)
       }

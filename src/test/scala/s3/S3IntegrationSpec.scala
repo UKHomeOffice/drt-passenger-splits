@@ -7,7 +7,7 @@ import akka.testkit.TestKit
 import awscala.s3.{Bucket, S3, S3Object, S3ObjectSummary}
 import core.ZipUtils
 import core.ZipUtils.UnzippedFileContent
-import org.specs2.mutable.SpecificationLike
+import org.specs2.mutable.{Specification, SpecificationLike}
 import parsing.PassengerInfoParser
 
 import scala.collection.immutable.Iterable
@@ -64,7 +64,67 @@ import scala.util.Try
 //  }
 //
 //}
+class JsonCreationUnitTestsSpec extends Specification {
 
+  import PassengerInfoParser._
+  import FlightPassengerInfoProtocol._
+  import spray.json._
+  import PassengerInfoParser._
+
+  val sampleJson =
+    """{
+      |  "EventCode": "DC",
+      |  "DeparturePortCode": "BRE",
+      |  "VoyageNumberTrailingLetter": "",
+      |  "ArrivalPortCode": "STN",
+      |  "DeparturePortCountryCode": "DEU",
+      |  "VoyageNumber": "3631",
+      |  "VoyageKey": "517c62be54d6822e33424d0fd7057449",
+      |  "ScheduledDateOfDeparture": "2016-03-02",
+      |  "ScheduledDateOfArrival": "2016-03-02",
+      |  "CarrierType": "AIR",
+      |  "CarrierCode": "FR",
+      |  "ScheduledTimeOfArrival": "06:00:00",
+      |  "PassengerList": [
+      |    {
+      |      "DocumentIssuingCountryCode": "MAR",
+      |      "PersonType": "P",
+      |      "DocumentLevel": "Primary",
+      |      "Age": "21",
+      |      "DisembarkationPortCode": "STN",
+      |      "InTransitFlag": "N",
+      |      "DisembarkationPortCountryCode": "GBR",
+      |      "NationalityCountryEEAFlag": "",
+      |      "DocumentType": "P",
+      |      "PoavKey": "000d6ab0f4929d8a92a99b83b0c35cfc",
+      |      "NationalityCountryCode": "MAR"
+      |    }]
+      |}""".stripMargin
+
+
+  "Can parse something" in {
+    val parsedAndConverted = sampleJson.parseJson.convertTo[VoyagePassengerInfo]
+    parsedAndConverted should beEqualTo(
+      VoyagePassengerInfo(EventCodes.DoorsClosed, "STN", "3631", "FR", "2016-03-02", "06:00:00",
+        PassengerInfoJson(Some("P"), "MAR", "", Some("21")) :: Nil)
+    )
+  }
+  "Can produce json from a VoyagePassengerInfo" in {
+    val vpi = VoyagePassengerInfo(EventCodes.DoorsClosed, "STN", "3631", "FR", "2016-03-02", "06:00:00",
+      PassengerInfoJson(Some("P"), "MAR", "", Some("21")) :: Nil)
+
+    vpi.toJson should beEqualTo(
+      """{"ScheduledDateOfArrival":"2016-03-02",
+        |"EventCode":"DC","PassengerList":[
+        | {"DocumentType":"P","DocumentIssuingCountryCode":"MAR","NationalityCountryEEAFlag":"","Age":"21"}],
+        | "ScheduledTimeOfArrival":"06:00:00","CarrierCode":"FR","VoyageNumber":"3631","ArrivalPortCode":"STN"
+        | }""".stripMargin.parseJson)
+  }
+//  "Can produce json from a VoyagePassengerSplits" in {
+//
+//  }
+  getClass.getClassLoader.getResourceAsStream("s3content/")
+}
 
 class S3IntegrationSpec extends TestKit(ActorSystem())
   with SpecificationLike {

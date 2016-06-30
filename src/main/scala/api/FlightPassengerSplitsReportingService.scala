@@ -6,11 +6,13 @@ import akka.pattern.AskableActorRef
 import akka.util.Timeout
 import com.amazonaws.services.dynamodbv2.xspec.N
 import core.PassengerInfoRouterActor._
+import core.PassengerQueueTypes.PaxTypeAndQueueCount
 import core.PassengerSplitsCalculator.PaxSplits
 import core.RegistrationActor.{Register, NotRegistered, Registered}
 import core.User
 import parsing.PassengerInfoParser.VoyagePassengerInfo
 import spray.http.{DateTime, StatusCodes, StatusCode}
+import spray.json._
 import spray.routing.Directives
 import spray.http._
 import spray.routing.Directives
@@ -25,8 +27,30 @@ import scala.Some
 import scala.util.matching.Regex.Match
 import scala.util.{Try, Success, Failure}
 
+trait FlightPassengerSplitsReportingServiceJsonFormats {
+  object ReportingJsonProtocol extends DefaultJsonProtocol {
+
+    implicit object DateTimeJsonFormat extends JsonFormat[DateTime] {
+      def read(json: JsValue) = ???
+
+      def write(c: DateTime) = JsString(c.toIsoDateTimeString)
+    }
+
+//    implicit object FlightInfoJsonFormat extends JsonWriter[VoyagePaxSplits] { def write(obj: VoyagePaxSplits) = JsString("hellobob") }
+
+    implicit object FlightPaxSplitsInfoJsonFormat extends JsonWriter[PaxSplits] {
+      def write(obj: PaxSplits) = JsString("hellobobsplit")
+    }
+    implicit val paxTypeAndQueueFormat = jsonFormat3(PaxTypeAndQueueCount)
+    implicit val voyagePaxSplitsFormat: RootJsonFormat[VoyagePaxSplits] = jsonFormat6(VoyagePaxSplits)
+
+  }
+}
+
+object FlightPassengerSplitsReportingServiceJsonFormats extends FlightPassengerSplitsReportingServiceJsonFormats
+
 class FlightPassengerSplitsReportingService(system: ActorSystem, aggregation: ActorRef)(implicit executionContext: ExecutionContext)
-  extends Directives with DefaultJsonFormats {
+  extends Directives with DefaultJsonFormats with FlightPassengerSplitsReportingServiceJsonFormats {
   val log = Logging(system, classOf[FlightPassengerSplitsReportingService])
 
   case class ImageUploaded(size: Int)
@@ -52,24 +76,9 @@ class FlightPassengerSplitsReportingService(system: ActorSystem, aggregation: Ac
   }
 
 
-  object MyJsonProtocol extends DefaultJsonProtocol {
-
-    implicit object DateTimeJsonFormat extends JsonWriter[DateTime] {
-      def write(c: DateTime) = JsString(c.toIsoDateTimeString)
-    }
-
-    implicit object FlightInfoJsonFormat extends JsonWriter[VoyagePaxSplits] {
-      def write(obj: VoyagePaxSplits) = JsString("hellobob")
-    }
-
-    implicit object FlightPaxSplitsInfoJsonFormat extends JsonWriter[PaxSplits] {
-      def write(obj: PaxSplits) = JsString("hellobobsplit")
-    }
-
-  }
-
   import PassengerInfoParser.FlightPassengerInfoProtocol._
-  import MyJsonProtocol._
+  import ReportingJsonProtocol._
+
   val flightCodeRe = """\w{2,3}\d+""".r
   val route =
     path("flight" / Segment) {
@@ -91,33 +100,30 @@ class FlightPassengerSplitsReportingService(system: ActorSystem, aggregation: Ac
             time match {
               case Some(t) =>
                 onComplete(calculateSplits(aggregation)(destPort, terminalName, flightCode, t)) {
-                  case Success(value) =>
+                  case Success(value: List[VoyagePaxSplits]) =>
                     log.info(s"Got some value ${value}")
-                    complete(
-                      """
-                        |[{
-                        | "destinationPort": "STN",
-                        | "flightNumber": "934",
-                        | "carrier": "RY",
-                        | "scheduledArrival": "2015-02-01T13:48:00",
-                        | "totalPax": 1,
-                        | "paxSplit": [
-                        |     {"paxType": "eea-machine-readable", "queueType": "eea-desk", "numberOfPax": 1}
-                        | ]
-                        |}]
-                      """.stripMargin)
+                    complete(value.toJson.prettyPrint)
+//                    complete(
+//                      """
+//                        |[{
+//                        | "destinationPort": "STN",
+//                        | "flightNumber": "934",
+//                        | "carrier": "RY",
+//                        | "scheduledArrival": "2015-02-01T13:48:00",
+//                        | "totalPax": 1,
+//                        | "paxSplit": [
+//                        |     {"paxType": "eea-machine-readable", "queueType": "eea-desk", "numberOfPax": 1}
+//                        | ]
+//                        |}]
+//                      """.stripMargin)
+                  case Success(any) => failWith(new Exception("Unexpected result" + any))
                   case Failure(ex) => complete("boo!")
                 }
               case None =>
                 failWith(new Exception(s"Bad nearly ISO datetime ${arrivalTime}"))
             }
           }
-      } ~ path("flight-pax-splits/dest-STN/terminal-N/BA123/scheduled-arrival-time-201500501T1455") {
-      get {
-        println(s"argh")
-        complete("got the default")
       }
-    }
 }
 
 
@@ -134,11 +140,11 @@ object FlightPassengerSplitsReportingService {
   }
 
   def calculateSplits(aggregator: AskableActorRef)
-                     ( destPort: String, terminalName: String, flightCode: String, arrivalTime: DateTime)(implicit timeout: Timeout, ec: ExecutionContext) = Future {
+                     (destPort: String, terminalName: String, flightCode: String, arrivalTime: DateTime)(implicit timeout: Timeout, ec: ExecutionContext) = {
     val ccAndFnOpt = getCarrierCodeAndFlightNumber(flightCode)
     ccAndFnOpt match {
       case Some((cc, fn)) => aggregator ? ReportVoyagePaxSplit(cc, fn, arrivalTime)
-      case None => throw new Exception(s"couldn't get carrier and voyage number from $flightCode")
+      case None => Future.failed(new Exception(s"couldn't get carrier and voyage number from $flightCode"))
     }
   }
 

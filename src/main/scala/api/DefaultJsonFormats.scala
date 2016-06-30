@@ -65,3 +65,5 @@ trait DefaultJsonFormats extends DefaultJsonProtocol with SprayJsonSupport with 
     }
 
 }
+
+object DefaultJsonFormats extends DefaultJsonFormats
