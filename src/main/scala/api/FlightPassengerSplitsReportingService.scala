@@ -28,6 +28,7 @@ import scala.util.matching.Regex.Match
 import scala.util.{Try, Success, Failure}
 
 trait FlightPassengerSplitsReportingServiceJsonFormats {
+
   object ReportingJsonProtocol extends DefaultJsonProtocol {
 
     implicit object DateTimeJsonFormat extends JsonFormat[DateTime] {
@@ -36,15 +37,17 @@ trait FlightPassengerSplitsReportingServiceJsonFormats {
       def write(c: DateTime) = JsString(c.toIsoDateTimeString)
     }
 
-//    implicit object FlightInfoJsonFormat extends JsonWriter[VoyagePaxSplits] { def write(obj: VoyagePaxSplits) = JsString("hellobob") }
+    //    implicit object FlightInfoJsonFormat extends JsonWriter[VoyagePaxSplits] { def write(obj: VoyagePaxSplits) = JsString("hellobob") }
 
     implicit object FlightPaxSplitsInfoJsonFormat extends JsonWriter[PaxSplits] {
       def write(obj: PaxSplits) = JsString("hellobobsplit")
     }
+
     implicit val paxTypeAndQueueFormat = jsonFormat3(PaxTypeAndQueueCount)
     implicit val voyagePaxSplitsFormat: RootJsonFormat[VoyagePaxSplits] = jsonFormat6(VoyagePaxSplits)
 
   }
+
 }
 
 object FlightPassengerSplitsReportingServiceJsonFormats extends FlightPassengerSplitsReportingServiceJsonFormats
@@ -80,6 +83,7 @@ class FlightPassengerSplitsReportingService(system: ActorSystem, aggregation: Ac
   import ReportingJsonProtocol._
 
   val flightCodeRe = """\w{2,3}\d+""".r
+  val portRe = """\w{2,3}""".r
   val route =
     path("flight" / Segment) {
       (flightCode) =>
@@ -91,7 +95,7 @@ class FlightPassengerSplitsReportingService(system: ActorSystem, aggregation: Ac
           )
         }
     } ~
-      path("flight-pax-splits" / "dest-" ~ "STN".r / "terminal-" ~ "\\w+".r /
+      path("flight-pax-splits" / "dest-" ~ portRe / "terminal-" ~ "\\w+".r /
         flightCodeRe / "scheduled-arrival-time-" ~ """\d{8}T\d{4}""".r) {
         (destPort, terminalName, flightCode, arrivalTime) =>
           get {
@@ -103,20 +107,9 @@ class FlightPassengerSplitsReportingService(system: ActorSystem, aggregation: Ac
                   case Success(value: List[VoyagePaxSplits]) =>
                     log.info(s"Got some value ${value}")
                     complete(value.toJson.prettyPrint)
-//                    complete(
-//                      """
-//                        |[{
-//                        | "destinationPort": "STN",
-//                        | "flightNumber": "934",
-//                        | "carrier": "RY",
-//                        | "scheduledArrival": "2015-02-01T13:48:00",
-//                        | "totalPax": 1,
-//                        | "paxSplit": [
-//                        |     {"paxType": "eea-machine-readable", "queueType": "eea-desk", "numberOfPax": 1}
-//                        | ]
-//                        |}]
-//                      """.stripMargin)
-                  case Success(any) => failWith(new Exception("Unexpected result" + any))
+                  case Success(flightNotFound: FlightNotFound) =>
+                    complete(StatusCodes.NotFound)
+                  case Success(any) => failWith(new Exception("Unexpected result: " + any))
                   case Failure(ex) => complete("boo!")
                 }
               case None =>

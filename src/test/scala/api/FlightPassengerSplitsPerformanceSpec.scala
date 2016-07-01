@@ -1,7 +1,9 @@
 package api
 
-import akka.actor.{ActorRef, Props}
+import akka.actor._
 import akka.event.Logging
+import akka.testkit.{TestKitBase, TestKit, ImplicitSender}
+import core.PassengerInfoRouterActor.ProcessedFlightInfo
 import core.{PassengerTypeCalculator, PassengerInfoRouterActor}
 import org.specs2.mutable.Specification
 import org.specs2.specification.AfterAll
@@ -14,8 +16,34 @@ import org.scalacheck._
 
 import scala.collection.immutable.IndexedSeq
 
-class FlightPassengerSplitsPerformanceSpec extends Specification with AfterAll with Directives with Specs2RouteTest {
+object PassengerInfoBatchComplete
+
+case class PassengerInfoBatchActor(replyActor: ActorRef, passengerInfoRoutingRef: ActorRef, flights: Seq[VoyagePassengerInfo]) extends Actor with ActorLogging {
+  flights foreach {
+    (flight) => passengerInfoRoutingRef ! flight
+  }
+
+  var received = 0
+
+  def receive = {
+    case ProcessedFlightInfo =>
+      log.info(s"processed flight info ${received}")
+      received += 1
+      if (received == flights.length) {
+        replyActor ! PassengerInfoBatchComplete
+        self ! PoisonPill
+      }
+  }
+}
+
+class FlightPassengerSplitsPerformanceSpec extends Specification with AfterAll with Directives
+  with Specs2RouteTest
+  with TestKitBase
+  with ImplicitSender {
   def actorRefFactory = system
+
+  isolated
+  sequential
 
   val log = Logging(system, classOf[FlightPassengerSplitsPerformanceSpec])
 
@@ -52,7 +80,7 @@ class FlightPassengerSplitsPerformanceSpec extends Specification with AfterAll w
     dateStr(0),
     dateStr(1), passengers)
 
-  def flights(max: Int): IndexedSeq[Any] = (1 to max).map {
+  def flights(max: Int) = (1 to max).map {
     (_) => Arbitrary(flightGen).arbitrary.sample.get
   }
 
@@ -65,49 +93,40 @@ class FlightPassengerSplitsPerformanceSpec extends Specification with AfterAll w
   "Given lots of flight events" >> {
     val aggregationRef: ActorRef = system.actorOf(Props[PassengerInfoRouterActor])
     val serviceAgg = new FlightPassengerSplitsReportingService(system, aggregationRef)
-    val fs = flights(1000)
-    fs foreach {
-      (flight) => aggregationRef ! flight
-    }
-    Thread.sleep(3000)
-    //    aggregationRef ! VoyagePassengerInfo(EventCodes.DoorsClosed,
-    //      "LHR", "123", "BA", "2015-05-01", "14:55", PassengerInfoJson(Some("P"), "GBR", "EEA", None) :: Nil)
-    val earliestFlightGenerated = fs.head
-    s"looking for the first event ${earliestFlightGenerated}" in {
+    s"looking for the first event " in {
+      val fs = flights(100)
+      system.actorOf(Props(new PassengerInfoBatchActor(testActor, aggregationRef, fs.toList)))
+
+      expectMsg(PassengerInfoBatchComplete)
+
+      val earliestFlightGenerated = fs.head
+      log.info(s"Looking for ${earliestFlightGenerated}")
       earliestFlightGenerated match {
-
         case VoyagePassengerInfo(_, port, voyageNumber, carrier, scheduleDate, scheduledTime, passengers) =>
-          val nearlyIsoArrivalDt = s"${scheduleDate}T${scheduledTime}"
-          log.info("About to request")
-          "a request for the paxSplits for a specific flight should respond in < 500msec" in {
-            Get(s"/flight-pax-splits/dest-${port}/terminal-N/${carrier}${voyageNumber}/scheduled-arrival-time-${nearlyIsoArrivalDt}") ~>
-              serviceAgg.route ~> check {
-              log.info("response was" + responseAs[String])
-              assert(response.status === StatusCodes.OK)
-              val json: JsValue = responseAs[String].parseJson
-
-              val expected =
-                """
-                  |[{
-                  | "destinationPort": "STN",
-                  | "voyageNumber": "934",
-                  | "carrierCode": "RY",
-                  | "scheduledArrivalDateTime": "2015-02-01T13:48:00",
-                  | "totalPaxCount": 1,
-                  | "paxSplits": [
-                  |     {"passengerType": "eea-machine-readable", "queueType": "desk", "paxCount": 1},
-                  |     {"passengerType": "eea-machine-readable", "queueType": "egate", "paxCount": 0}
-                  | ]
-                  |}]
-                """.stripMargin.
-                  parseJson
-              println(json.prettyPrint)
-              println(expected.prettyPrint)
-              json should beEqualTo (expected)
+          val nearlyIsoArrivalDt = s"${scheduleDate.replace("-", "")}T${scheduledTime.replace(":", "").take(4)}"
+          val routeToRequest: String = s"/flight-pax-splits/dest-${port}/terminal-N/${carrier}${voyageNumber}/scheduled-arrival-time-${nearlyIsoArrivalDt}"
+          log.info(s"About to request ${routeToRequest}")
+          Get(routeToRequest) ~>
+            serviceAgg.route ~> check {
+            log.info("response was" + responseAs[String])
+            assert(response.status === StatusCodes.OK)
+            val json: JsValue = responseAs[String].parseJson
+            json match {
+              case JsArray(elements) =>
+                val head1 = elements.head.asJsObject
+                head1.getFields("destinationPort", "carrierCode", "voyageNumber", "scheduledArrivalDateTime", "totalPaxCount") match {
+                  case Seq(JsString(port), JsString(carrier), JsString(voyageNumber), JsString(isoArrivalDt), JsNumber(totalPaxCount)) =>
+                    success("we got what we came for")
+                }
+                log.info(s"head is ${head1}")
+              case _ => failTest("response was not an array")
             }
           }
-          false
+        case default =>
+          log.error("Why are we here?")
+          failTest(s"Why are we here? ${default}")
       }
+      success("yay")
     }
   }
 

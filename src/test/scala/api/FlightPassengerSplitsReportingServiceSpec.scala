@@ -2,6 +2,7 @@ package api
 
 import core.PassengerInfoRouterActor.VoyagePaxSplits
 import core.PassengerQueueTypes.{PaxTypeAndQueueCount, Desks, PaxTypes}
+import org.omg.CosNaming.NamingContextPackage.NotFound
 import org.specs2.mutable.Specification
 import akka.actor.{ActorRef, Props}
 import akka.event.Logging
@@ -19,6 +20,7 @@ import DefaultJsonProtocol._
 
 class FlightPassengerSplitsReportingServiceSpec extends Specification with AfterAll with Directives with Specs2RouteTest {
   def actorRefFactory = system
+
   val log = Logging(system, classOf[FlightPassengerSplitsReportingServiceSpec])
   "The routing infrastructure should support" >> {
     val aggregationRef: ActorRef = system.actorOf(Props[PassengerInfoRouterActor])
@@ -46,7 +48,8 @@ class FlightPassengerSplitsReportingServiceSpec extends Specification with After
         assert(response.status === StatusCodes.OK)
         val json: JsValue = responseAs[String].parseJson
 
-        val expected =   """
+        val expected =
+          """
             |[{
             | "destinationPort": "STN",
             | "voyageNumber": "934",
@@ -64,12 +67,21 @@ class FlightPassengerSplitsReportingServiceSpec extends Specification with After
         json should beEqualTo(expected)
       }
     }
+    "a request for a flight the service doesn't know about should give a 404 Not Found" in {
+      Get("/flight-pax-splits/dest-STN/terminal-N/ZZ666/scheduled-arrival-time-20300201T1111") ~>
+        serviceAgg.route ~> check {
+        log.info("response was" + responseAs[String])
+        response.status should beEqualTo(StatusCodes.NotFound)
+      }
+
+    }
   }
 
   def afterAll() = system.terminate()
 }
 
 class FlightPassengerSplitsReportingServiceUnitTests extends Specification with DefaultJsonFormats {
+
   import spray.json._
   import FlightPassengerSplitsReportingServiceJsonFormats.ReportingJsonProtocol._
 

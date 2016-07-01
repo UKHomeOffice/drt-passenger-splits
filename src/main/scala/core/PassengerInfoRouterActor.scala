@@ -1,7 +1,7 @@
 package core
 
 import akka.actor.{Actor, ActorLogging}
-import core.PassengerInfoRouterActor.{FlightNotFound, ReportFlightCode, ReportVoyagePaxSplit, VoyagePaxSplits}
+import core.PassengerInfoRouterActor._
 import core.PassengerQueueTypes.PaxTypeAndQueueCounts
 import parsing.PassengerInfoParser.VoyagePassengerInfo
 import spray.http.DateTime
@@ -19,7 +19,7 @@ object PassengerInfoRouterActor {
   case class ReportFlightCode(flightCode: String)
 
   case class FlightNotFound(carrierCode: String, flightCode: String, scheduledArrivalDateTime: DateTime)
-
+  object ProcessedFlightInfo
 }
 
 class PassengerInfoRouterActor extends Actor with PassengerQueueCalculator with ActorLogging {
@@ -28,8 +28,10 @@ class PassengerInfoRouterActor extends Actor with PassengerQueueCalculator with 
 
   def receive = {
     case info: VoyagePassengerInfo =>
-      log.info("Got new passenger info" + info)
+//      log.info("Got new passenger info: " + info)
       myFlights = info :: (myFlights filterNot (_.flightCode == info.flightCode))
+      log.info(s"Count now: ${myFlights.length}")
+      sender ! ProcessedFlightInfo
     case ReportVoyagePaxSplit(carrierCode, voyageNumber, scheduledArrivalDateTime) =>
       log.info(id + s"Report flight split for $carrierCode $voyageNumber\n Current state is ${myFlights}")
       val matchingFlights: Option[VoyagePassengerInfo] = myFlights.find {
