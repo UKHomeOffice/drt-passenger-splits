@@ -99,7 +99,7 @@ class FlightPassengerSplitsReportingService(system: ActorSystem, aggregation: Ac
         flightCodeRe / "scheduled-arrival-time-" ~ """\d{8}T\d{4}""".r) {
         (destPort, terminalName, flightCode, arrivalTime) =>
           get {
-            println(s"Got request! $destPort, $terminalName, $flightCode")
+            log.info(s"GET flight-pax-splits $destPort, $terminalName, $flightCode, $arrivalTime")
             val time: Option[DateTime] = parseUrlDateTime(arrivalTime)
             time match {
               case Some(t) =>
@@ -110,7 +110,9 @@ class FlightPassengerSplitsReportingService(system: ActorSystem, aggregation: Ac
                   case Success(flightNotFound: FlightNotFound) =>
                     complete(StatusCodes.NotFound)
                   case Success(any) => failWith(new Exception("Unexpected result: " + any))
-                  case Failure(ex) => complete("boo!")
+                  case Failure(ex) =>
+                    log.error(ex, s"Failed to complete for ${destPort} ${terminalName} ${flightCode} ${t}")
+                    failWith(ex)
                 }
               case None =>
                 failWith(new Exception(s"Bad nearly ISO datetime ${arrivalTime}"))

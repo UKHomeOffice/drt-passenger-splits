@@ -34,7 +34,6 @@ object PassengerInfoParser {
                                  PassengerList: List[PassengerInfoJson]) {
     def flightCode: String = CarrierCode + VoyageNumber
     def scheduleArrivalDateTime: Option[DateTime] = {
-      println(s"ScheduledArrivalDateTime ${scheduleDateTimeString}")
       DateTime.fromIsoDateTimeString(scheduleDateTimeString)
     }
     def passengerInfos: Seq[PassengerInfo] = PassengerList.map(_.toPassengerInfo)

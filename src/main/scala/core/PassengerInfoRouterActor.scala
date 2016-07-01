@@ -20,24 +20,26 @@ object PassengerInfoRouterActor {
 
   case class FlightNotFound(carrierCode: String, flightCode: String, scheduledArrivalDateTime: DateTime)
   object ProcessedFlightInfo
+  object LogStatus
 }
 
 class PassengerInfoRouterActor extends Actor with PassengerQueueCalculator with ActorLogging {
   val id = getClass.toString
   var myFlights = List[VoyagePassengerInfo]()
-
+  var count = 0
   def receive = {
     case info: VoyagePassengerInfo =>
 //      log.info("Got new passenger info: " + info)
-      myFlights = info :: (myFlights filterNot (_.flightCode == info.flightCode))
-      log.info(s"Count now: ${myFlights.length}")
+      myFlights = info :: myFlights
+      count += 1
+//      log.info(s"Count nowy: ${count}")
       sender ! ProcessedFlightInfo
     case ReportVoyagePaxSplit(carrierCode, voyageNumber, scheduledArrivalDateTime) =>
-      log.info(id + s"Report flight split for $carrierCode $voyageNumber\n Current state is ${myFlights}")
+      log.info(s"Report flight split for $carrierCode $voyageNumber")
       val matchingFlights: Option[VoyagePassengerInfo] = myFlights.find {
         (flight) => {
-          log.info(s"Testing $flight ${flight.scheduleArrivalDateTime} === ($carrierCode, ${voyageNumber}, ${scheduledArrivalDateTime})")
-          log.info(s"Dates are scheduledArrivalDateTime == flight.scheduleArrivalDateTime.get ${Some(scheduledArrivalDateTime) == flight.scheduleArrivalDateTime}")
+//          log.info(s"Testing $flight ${flight.scheduleArrivalDateTime} === ($carrierCode, ${voyageNumber}, ${scheduledArrivalDateTime})")
+//          log.info(s"Dates are scheduledArrivalDateTime == flight.scheduleArrivalDateTime.get ${Some(scheduledArrivalDateTime) == flight.scheduleArrivalDateTime}")
           flight.VoyageNumber == voyageNumber && carrierCode == flight.CarrierCode && Some(scheduledArrivalDateTime) == flight.scheduleArrivalDateTime
         }
       }
@@ -57,5 +59,7 @@ class PassengerInfoRouterActor extends Actor with PassengerQueueCalculator with 
       log.info(s"Will reply ${matchingFlights}")
 
       sender ! matchingFlights
+    case LogStatus =>
+      log.info(s"Current Status ${myFlights}")
   }
 }
