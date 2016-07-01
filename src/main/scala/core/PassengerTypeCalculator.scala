@@ -83,6 +83,7 @@ object PassengerTypeCalculator {
 
   object CountryCodes {
     val Austria = "AUT"
+    val Australia = "AUS"
     val Belgium = "BEL"
     val Bulgaria = "BGR"
     val Croatia = "HRV"

@@ -9,6 +9,7 @@ scalaVersion := "2.11.8"
 resolvers ++= Seq(
   "spray repo" at "http://repo.spray.io",
   "spray nightlies" at "http://nightlies.spray.io",
+  "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases",
   Resolver.bintrayRepo("mfglabs", "maven"),
   Resolver.bintrayRepo("dwhjames", "maven")
 )
@@ -27,7 +28,8 @@ libraryDependencies ++= Seq(
   "io.spray" %% "spray-client" % sprayVersion,
   "io.spray" %% "spray-routing" % sprayVersion,
   "io.spray" %% "spray-json" % "1.3.2",
-  "org.specs2" %% "specs2-core" % "3.8.3" % "test",
+  "org.specs2" %% "specs2-core" % "3.8.4" % "test",
+  "org.specs2" %% "specs2-scalacheck" % "3.8.4",
   //https://groups.google.com/forum/#!topic/spray-user/2T6SBp4OJeI for this exclusion
   "io.spray" %% "spray-testkit" % sprayVersion % "test" exclude("org.specs2", "specs2_2.11"),
   "com.typesafe.akka" %% "akka-testkit" % "2.4.6" % "test",
