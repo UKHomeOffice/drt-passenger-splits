@@ -39,6 +39,7 @@ object PassengerInfoParser {
     def passengerInfos: Seq[PassengerInfo] = PassengerList.map(_.toPassengerInfo)
 
     private def scheduleDateTimeString: String = s"${ScheduledDateOfArrival}T${ScheduledTimeOfArrival}"
+    def summary: String = s"${ArrivalPortCode}/${CarrierCode}${VoyageNumber}@${ScheduledDateOfArrival}T{$ScheduledTimeOfArrival"
   }
 
   object FlightPassengerInfoProtocol extends DefaultJsonProtocol {

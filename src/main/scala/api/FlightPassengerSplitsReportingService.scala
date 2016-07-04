@@ -138,7 +138,7 @@ object FlightPassengerSplitsReportingService {
                      (destPort: String, terminalName: String, flightCode: String, arrivalTime: DateTime)(implicit timeout: Timeout, ec: ExecutionContext) = {
     val ccAndFnOpt = getCarrierCodeAndFlightNumber(flightCode)
     ccAndFnOpt match {
-      case Some((cc, fn)) => aggregator ? ReportVoyagePaxSplit(cc, fn, arrivalTime)
+      case Some((cc, fn)) => aggregator ? ReportVoyagePaxSplit(destPort, cc, fn, arrivalTime)
       case None => Future.failed(new Exception(s"couldn't get carrier and voyage number from $flightCode"))
     }
   }

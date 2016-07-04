@@ -1,6 +1,6 @@
 package core
 
-import akka.actor.{Actor, ActorLogging}
+import akka.actor.{Props, ActorRef, Actor, ActorLogging}
 import core.PassengerInfoRouterActor._
 import core.PassengerQueueTypes.PaxTypeAndQueueCounts
 import parsing.PassengerInfoParser.VoyagePassengerInfo
@@ -8,7 +8,8 @@ import spray.http.DateTime
 
 object PassengerInfoRouterActor {
 
-  case class ReportVoyagePaxSplit(carrierCode: String, voyageNumber: String, scheduledArrivalDateTime: DateTime)
+  case class ReportVoyagePaxSplit(destinationPort: String,
+                                  carrierCode: String, voyageNumber: String, scheduledArrivalDateTime: DateTime)
 
   case class VoyagePaxSplits(destinationPort: String, carrierCode: String,
                              voyageNumber: String,
@@ -19,27 +20,52 @@ object PassengerInfoRouterActor {
   case class ReportFlightCode(flightCode: String)
 
   case class FlightNotFound(carrierCode: String, flightCode: String, scheduledArrivalDateTime: DateTime)
+
   object ProcessedFlightInfo
+
   object LogStatus
+
+}
+
+class PassengerInfoByPortRouter extends Actor with PassengerQueueCalculator with ActorLogging {
+  var as = Map.empty[String, ActorRef]
+
+  def getRCActor(id: String) = as get id getOrElse {
+    val c = context actorOf Props[PassengerInfoRouterActor]
+    as += id -> c
+    context watch c
+    log.info(s"created actor ${id}")
+    c
+  }
+
+  def receive = {
+    case info: VoyagePassengerInfo =>
+      val child = getRCActor(s"pax-split-calculator-${info.ArrivalPortCode}-${info.CarrierCode}")
+      child.tell(info, sender)
+    case report: ReportVoyagePaxSplit =>
+      val child = getRCActor(s"pax-split-calculator-${report.destinationPort}-${report.carrierCode}")
+      child.tell(report, sender)
+    case report: ReportFlightCode =>
+      ???
+    case LogStatus =>
+      as.values.foreach(_ ! LogStatus)
+  }
 }
 
 class PassengerInfoRouterActor extends Actor with PassengerQueueCalculator with ActorLogging {
-  val id = getClass.toString
   var myFlights = List[VoyagePassengerInfo]()
   var count = 0
+
   def receive = {
     case info: VoyagePassengerInfo =>
-//      log.info("Got new passenger info: " + info)
       myFlights = info :: myFlights
       count += 1
-//      log.info(s"Count nowy: ${count}")
       sender ! ProcessedFlightInfo
-    case ReportVoyagePaxSplit(carrierCode, voyageNumber, scheduledArrivalDateTime) =>
-      log.info(s"Report flight split for $carrierCode $voyageNumber")
+    case ReportVoyagePaxSplit(port, carrierCode, voyageNumber, scheduledArrivalDateTime) =>
+      log.info(s"Report flight split for $port $carrierCode $voyageNumber $scheduledArrivalDateTime")
+//      log.info(s"Current flights ${myFlights}")
       val matchingFlights: Option[VoyagePassengerInfo] = myFlights.find {
         (flight) => {
-//          log.info(s"Testing $flight ${flight.scheduleArrivalDateTime} === ($carrierCode, ${voyageNumber}, ${scheduledArrivalDateTime})")
-//          log.info(s"Dates are scheduledArrivalDateTime == flight.scheduleArrivalDateTime.get ${Some(scheduledArrivalDateTime) == flight.scheduleArrivalDateTime}")
           flight.VoyageNumber == voyageNumber && carrierCode == flight.CarrierCode && Some(scheduledArrivalDateTime) == flight.scheduleArrivalDateTime
         }
       }

@@ -28,7 +28,7 @@ class FlightPassengerInfoRouterActorSpec extends
       aggregator ! VoyagePassengerInfo(EventCodes.DoorsClosed, "LGW", "12345", "EZ", "2017-04-02", "15:33:00",
         PassengerInfoJson(Some("P"), "GBR", "EEA", None) :: Nil)
       "When we ask for a report of voyage pax splits then we should see pax splits of the 1 passenger in eeaDesk queue" in {
-        aggregator ! ReportVoyagePaxSplit("EZ", "12345", DateTime(2017, 4, 2, 15, 33))
+        aggregator ! ReportVoyagePaxSplit("LGW", "EZ", "12345", DateTime(2017, 4, 2, 15, 33))
         val expectedPaxSplits = Seq(
           PaxTypeAndQueueCount(PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.egate, 0),
           PaxTypeAndQueueCount(PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.eeaDesk, 1)
@@ -46,7 +46,7 @@ class FlightPassengerInfoRouterActorSpec extends
             Nil)
 
         val scheduleArrivalTime: DateTime = DateTime(2015, 6, 1, 13, 55)
-        aggregator ! ReportVoyagePaxSplit("EZ", "789", scheduleArrivalTime)
+        aggregator ! ReportVoyagePaxSplit("STN", "EZ", "789", scheduleArrivalTime)
 
         val expectedPaxSplits = Seq(
           PaxTypeAndQueueCount(PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.egate, 0),
@@ -64,7 +64,7 @@ class FlightPassengerInfoRouterActorSpec extends
             List.tabulate(20)(_ => PassengerInfoJson(Some("P"), "NZL", "", None)))
 
         val scheduleArrivalDateTime: DateTime = DateTime(2015, 7, 12, 10, 22)
-        aggregator ! ReportVoyagePaxSplit("BA", "978", scheduleArrivalDateTime)
+        aggregator ! ReportVoyagePaxSplit("STN", "BA", "978", scheduleArrivalDateTime)
         val expectedPaxSplits: PassengerQueueTypes.PaxTypeAndQueueCounts = Seq(
           PaxTypeAndQueueCount(PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.egate, 48),
           PaxTypeAndQueueCount(PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.eeaDesk, 32),
@@ -77,7 +77,7 @@ class FlightPassengerInfoRouterActorSpec extends
 
     "Given no flights" in {
       "When we ask for a report of voyage pax splits of a flight we don't know about then we get FlightNotFound " in {
-        aggregator ! ReportVoyagePaxSplit("DNE", "999", DateTime(2015, 6, 1, 13, 55))
+        aggregator ! ReportVoyagePaxSplit("NON", "DNE", "999", DateTime(2015, 6, 1, 13, 55))
         expectMsg(FlightNotFound("DNE", "999", DateTime(2015, 6, 1, 13, 55)))
         success
       }
