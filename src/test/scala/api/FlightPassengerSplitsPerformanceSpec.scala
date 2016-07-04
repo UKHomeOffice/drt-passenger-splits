@@ -13,6 +13,7 @@ import spray.json._
 import spray.routing.Directives
 import spray.testkit.Specs2RouteTest
 import org.scalacheck._
+import scala.annotation.tailrec
 import scala.concurrent.duration._
 
 import scala.collection.immutable.IndexedSeq
@@ -30,6 +31,8 @@ case class PassengerInfoBatchActor(replyActor: ActorRef, passengerInfoRoutingRef
 
   def receive = {
     case "Begin" =>
+      val dates = flights.map(_.ScheduledDateOfArrival).toSet
+      log.info(s"Dates to process ${dates}")
       flights foreach {
         (flight) => passengerInfoRoutingRef ! flight
       }
@@ -76,26 +79,51 @@ class FlightPassengerSplitsPerformanceSpec extends Specification with AfterAll w
     port <- airportGen
     carrier <- carrierCodeGen
     vn <- voyageNumberGen
-    month <- Gen.chooseNum(1, 12)
-    day <- Gen.chooseNum(1, 20)
     minute <- Gen.chooseNum(0, 59)
-    dateStr = dateTime.toIsoLikeDateTimeString.split(" ")
+    hour <- Gen.chooseNum(0, 23)
+    randomizedDateTime = dateTime.copy(hour = hour, minute = minute)
+    dateStr = randomizedDateTime.toIsoLikeDateTimeString.split(" ")
     passengers <- Gen.listOf(passengerInfoGen)
   } yield VoyagePassengerInfo(et, port, vn.toString, carrier,
     dateStr(0),
     dateStr(1), passengers)
 
-//  def flights(max: Int) = (1 to max).map {
-//    (n) => {
-//      val dateTime = DateTime(2016, 4, 1, 12, 23)
-//      val v: IndexedSeq[VoyagePassengerInfo] = Arbitrary(flightGen(dateTime)).arbitrary.sample.get
-//      v
-//    }
-//  }
+  case class FlightId(port: String, carrier: String, voyageNumber: String, scheduledArrival: DateTime)
+
+  def flightIdGen(dateTime: DateTime): Gen[FlightId] = for {
+    port <- airportGen
+    carrier <- carrierCodeGen
+    vn <- voyageNumberGen
+    minute <- Gen.chooseNum(0, 59)
+    hour <- Gen.chooseNum(0, 23)
+    randomizedDateTime = dateTime.copy(hour = hour, minute = minute)
+  } yield FlightId(port, vn.toString, carrier, randomizedDateTime)
+
+
+  //  def flights(max: Int) = (1 to max).map {
+  //    (n) => {
+  //      val dateTime = DateTime(2016, 4, 1, 12, 23)
+  //      val v: IndexedSeq[VoyagePassengerInfo] = Arbitrary(flightGen(dateTime)).arbitrary.sample.get
+  //      v
+  //    }
+  //  }
 
   def flightStream(startDateTime: DateTime): Stream[VoyagePassengerInfo] = {
     Arbitrary(flightGen(startDateTime)).arbitrary.sample.get #::
       flightStream(startDateTime)
+  }
+
+  def flightList(startDateTime: DateTime, numFlights: Int): Seq[VoyagePassengerInfo] = {
+    (0 to numFlights).flatMap(n => eventsFromFlight(Arbitrary(flightGen(startDateTime)).arbitrary.sample.get))
+  }
+
+  def eventsFromFlight(vpi: VoyagePassengerInfo): List[VoyagePassengerInfo] = {
+    vpi match {
+      case v if v.PassengerList == Nil => Nil
+      case v =>
+        val copy = v.copy(PassengerList = v.PassengerList.tail)
+        copy :: eventsFromFlight(copy)
+    }
   }
 
   implicit def default(implicit system: ActorSystem) = RouteTestTimeout(new DurationInt(5).second)
@@ -105,22 +133,24 @@ class FlightPassengerSplitsPerformanceSpec extends Specification with AfterAll w
 
 
   "Given lots of flight events" >> {
-    val fs: List[VoyagePassengerInfo] = initialiseFlightsWithStream(aggregationRef, 1000000)
+    val totalEvents: Int = 1000000
+    val flightsToFind: List[VoyagePassengerInfo] = initialiseFlightsWithStream(aggregationRef, totalEvents)
 
     s"looking for the first event " in {
-      val flightToFind = fs.take(1).toList.head
+      val flightToFind = flightsToFind.take(1).toList.head
       log.info(s"Looking for ${flightToFind}")
       findFlightAndCheckResult(flightToFind)
       success("yay")
     }
-    s"looking for multiple events" in {
-      fs take(1000) foreach {
+    s"looking for multiple events ${flightsToFind.length}" in {
+
+      flightsToFind foreach {
         flightToFind =>
-        val (result, time) = profile {
-          findFlightAndCheckResult(flightToFind)
-        }
-        log.info(s"Find of ${flightToFind.summary} took ${time / 1000000}")
-        result
+          val (result, time) = profile {
+            findFlightAndCheckResult(flightToFind)
+          }
+          log.info(s"Find of ${flightToFind.summary} took ${time / 1000000}")
+          result
       }
       success("yay")
     }
@@ -154,10 +184,17 @@ class FlightPassengerSplitsPerformanceSpec extends Specification with AfterAll w
     }
   }
 
-  def initialiseFlightsWithStream(aggRef: ActorRef, n: Int): List[VoyagePassengerInfo] = {
+  def dateStream(sd: DateTime): Stream[DateTime] = sd #:: dateStream(sd + 1000 * 60 * 60 * 24)
+
+  def initialiseFlightsWithStream(aggRef: ActorRef, totalEvents: Int): List[VoyagePassengerInfo] = {
     println("Initialise flights")
     val (result, time) = profile {
-      val fs = flightStream(DateTime.now.copy(second = 0)).take(n)
+      val dts = dateStream(DateTime(2016, 4, 1))
+      val flightsPerDay: Int = 1400
+      val numberOfDays: Int = 30
+
+      val fs: Stream[VoyagePassengerInfo] = dts.take(numberOfDays).flatMap(flightList(_, flightsPerDay))
+//        .take(totalEvents)
       fs.grouped(50000).map {
         (group: Stream[VoyagePassengerInfo]) =>
           val groupList: List[VoyagePassengerInfo] = group.toList
@@ -175,21 +212,21 @@ class FlightPassengerSplitsPerformanceSpec extends Specification with AfterAll w
 
   }
 
-//  def initialiseFlights(aggregationRef: ActorRef): IndexedSeq[VoyagePassengerInfo] = {
-//    println("Initialise flights")
-//    val (result, time) = profile {
-//      val fs = flights(400000)
-//      val batchActor = system.actorOf(Props(new PassengerInfoBatchActor(testActor, aggregationRef, fs.toList)))
-//      log.info("Sending messages")
-//      batchActor ! "Begin"
-//      expectMsg(500 seconds, PassengerInfoBatchComplete)
-//
-//      log.info("Sent all messages and they're processed")
-//      fs
-//    }
-//    log.info(s"Initialise took ${time / 1000000}")
-//    result
-//  }
+  //  def initialiseFlights(aggregationRef: ActorRef): IndexedSeq[VoyagePassengerInfo] = {
+  //    println("Initialise flights")
+  //    val (result, time) = profile {
+  //      val fs = flights(400000)
+  //      val batchActor = system.actorOf(Props(new PassengerInfoBatchActor(testActor, aggregationRef, fs.toList)))
+  //      log.info("Sending messages")
+  //      batchActor ! "Begin"
+  //      expectMsg(500 seconds, PassengerInfoBatchComplete)
+  //
+  //      log.info("Sent all messages and they're processed")
+  //      fs
+  //    }
+  //    log.info(s"Initialise took ${time / 1000000}")
+  //    result
+  //  }
 
   def afterAll() = system.terminate()
 }

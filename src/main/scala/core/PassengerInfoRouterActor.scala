@@ -58,7 +58,7 @@ class PassengerInfoRouterActor extends Actor with PassengerQueueCalculator with 
 
   def receive = {
     case info: VoyagePassengerInfo =>
-      myFlights = info :: myFlights
+      myFlights = info :: myFlights.filterNot(doesFlightMatch(info, _))
       count += 1
       sender ! ProcessedFlightInfo
     case ReportVoyagePaxSplit(port, carrierCode, voyageNumber, scheduledArrivalDateTime) =>
@@ -66,7 +66,7 @@ class PassengerInfoRouterActor extends Actor with PassengerQueueCalculator with 
 //      log.info(s"Current flights ${myFlights}")
       val matchingFlights: Option[VoyagePassengerInfo] = myFlights.find {
         (flight) => {
-          flight.VoyageNumber == voyageNumber && carrierCode == flight.CarrierCode && Some(scheduledArrivalDateTime) == flight.scheduleArrivalDateTime
+          doesFlightMatch(carrierCode, voyageNumber, scheduledArrivalDateTime, flight)
         }
       }
       log.info(s"Matching flight is ${matchingFlights}")
@@ -87,5 +87,14 @@ class PassengerInfoRouterActor extends Actor with PassengerQueueCalculator with 
       sender ! matchingFlights
     case LogStatus =>
       log.info(s"Current Status ${myFlights}")
+  }
+
+  def doesFlightMatch(info: VoyagePassengerInfo, existingMessage: VoyagePassengerInfo): Boolean = {
+    doesFlightMatch(info.CarrierCode,
+      info.VoyageNumber, info.scheduleArrivalDateTime.get, existingMessage)
+  }
+
+  def doesFlightMatch(carrierCode: String, voyageNumber: String, scheduledArrivalDateTime: DateTime, flight: VoyagePassengerInfo): Boolean = {
+    flight.VoyageNumber == voyageNumber && carrierCode == flight.CarrierCode && Some(scheduledArrivalDateTime) == flight.scheduleArrivalDateTime
   }
 }
