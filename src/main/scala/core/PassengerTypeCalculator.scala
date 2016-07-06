@@ -142,6 +142,7 @@ object PassengerTypeCalculator {
       case (EEA, country, _) if (EEACountries contains country) => "eea-machine-readable"
       case ("", country, Some(DocType.Visa)) if !(EEACountries contains country) => "national-visa"
       case ("", country, Some(DocType.Passport)) if !(EEACountries contains country) => "national-non-visa"
+      case _ => "national-visa"
     }
   }
 }

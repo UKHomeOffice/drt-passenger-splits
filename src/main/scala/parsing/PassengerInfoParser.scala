@@ -1,7 +1,7 @@
 package parsing
 
 import spray.http.DateTime
-import spray.json.DefaultJsonProtocol
+import spray.json.{RootJsonFormat, DefaultJsonProtocol}
 
 import scala.util.Try
 
@@ -45,7 +45,7 @@ object PassengerInfoParser {
   object FlightPassengerInfoProtocol extends DefaultJsonProtocol {
     implicit val passengerInfoConverter = jsonFormat(PassengerInfoJson, "DocumentType",
       "DocumentIssuingCountryCode", "NationalityCountryEEAFlag", "Age")
-    implicit val passengerInfoResponseConverter = jsonFormat7(VoyagePassengerInfo)
+    implicit val passengerInfoResponseConverter: RootJsonFormat[VoyagePassengerInfo] = jsonFormat7(VoyagePassengerInfo)
   }
 
 }

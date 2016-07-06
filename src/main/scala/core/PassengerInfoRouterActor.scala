@@ -56,7 +56,7 @@ class PassengerInfoByPortRouter extends
       val child = getRCActor(childName(report.destinationPort, report.carrierCode))
       child.tell(report, sender)
     case report: ReportFlightCode =>
-      ???
+      childActorMap.values.foreach(_ ! report)
     case LogStatus =>
       childActorMap.values.foreach(_ ! LogStatus)
   }
@@ -76,8 +76,10 @@ class PassengerInfoRouterActor extends Actor with ActorLogging
       val child = getRCActor(childName(info.ArrivalPortCode, info.CarrierCode, info.VoyageNumber, info.scheduleArrivalDateTime.get))
       child.tell(info, sender)
     case report: ReportVoyagePaxSplit =>
-      val child = getRCActor(childName(report.destinationPort, report.carrierCode, report.voyageNumber,
-        report.scheduledArrivalDateTime))
+      val name: String = childName(report.destinationPort, report.carrierCode, report.voyageNumber,
+        report.scheduledArrivalDateTime)
+      log.info(s"Asking $name for paxSplits")
+      val child = getRCActor(name)
       child.tell(report, sender)
     case report: ReportFlightCode =>
       (childActorMap.values).foreach { case child => child.tell(report, sender) }
@@ -100,7 +102,7 @@ class SingleFlightActor
       sender ! ProcessedFlightInfo
     case ReportVoyagePaxSplit(port, carrierCode, voyageNumber, scheduledArrivalDateTime) =>
       log.info(s"Report flight split for $port $carrierCode $voyageNumber $scheduledArrivalDateTime")
-//      log.info(s"Current flights ${latestMessage}")
+      log.info(s"Current flights ${latestMessage}")
       val matchingFlights: Option[VoyagePassengerInfo] = latestMessage.find {
         (flight) => {
           doesFlightMatch(carrierCode, voyageNumber, scheduledArrivalDateTime, flight)
