@@ -1,31 +1,25 @@
 package api
 
-import akka.actor.{ActorSystem, ActorRef}
+import akka.actor.{ActorRef, ActorSystem}
 import akka.event.Logging
 import akka.pattern.AskableActorRef
 import akka.util.Timeout
-import com.amazonaws.services.dynamodbv2.xspec.N
 import core.PassengerInfoRouterActor._
 import core.PassengerQueueTypes.PaxTypeAndQueueCount
 import core.PassengerSplitsCalculator.PaxSplits
-import core.RegistrationActor.{Register, NotRegistered, Registered}
-import core.User
 import parsing.PassengerInfoParser.VoyagePassengerInfo
-import spray.http.{DateTime, StatusCodes, StatusCode}
+import spray.http._
 import spray.json._
 import spray.routing.Directives
 import spray.http._
 import spray.routing.Directives
 import scala.concurrent.{Future, ExecutionContext}
-import core.{User, RegistrationActor}
 import akka.util.Timeout
-import RegistrationActor._
 import spray.http._
 import core.User
-import core.RegistrationActor.Register
 import scala.Some
 import scala.util.matching.Regex.Match
-import scala.util.{Try, Success, Failure}
+import scala.util.{Failure, Success}
 
 trait FlightPassengerSplitsReportingServiceJsonFormats {
 
@@ -52,47 +46,35 @@ trait FlightPassengerSplitsReportingServiceJsonFormats {
 
 object FlightPassengerSplitsReportingServiceJsonFormats extends FlightPassengerSplitsReportingServiceJsonFormats
 
-class FlightPassengerSplitsReportingService(system: ActorSystem, aggregation: ActorRef)(implicit executionContext: ExecutionContext)
+class FlightPassengerSplitsReportingService(system: ActorSystem, flightInfoPaxSplitActor: ActorRef)(implicit executionContext: ExecutionContext)
   extends Directives with DefaultJsonFormats with FlightPassengerSplitsReportingServiceJsonFormats {
   val log = Logging(system, classOf[FlightPassengerSplitsReportingService])
 
   case class ImageUploaded(size: Int)
 
   //  import reflect.ClassTag
-  import parsing.PassengerInfoParser
-  import spray.json._
-  import akka.pattern.ask
+  import parsing.PassengerInfoParser._
+  import FlightPassengerInfoProtocol._
   import FlightPassengerSplitsReportingService._
+  import akka.pattern.ask
+  import spray.json._
 
   import scala.concurrent.duration._
 
   implicit val timeout = Timeout(2.seconds)
 
-  implicit val userFormat = jsonFormat4(User)
-  implicit val registerFormat = jsonFormat1(Register)
-  implicit val registeredFormat = jsonObjectFormat[Registered.type]
-  implicit val notRegisteredFormat = jsonObjectFormat[NotRegistered.type]
-  implicit val imageUploadedFormat = jsonFormat1(ImageUploaded)
 
-  implicit object EitherErrorSelector extends ErrorSelector[NotRegistered.type] {
-    def apply(v: NotRegistered.type): StatusCode = StatusCodes.BadRequest
-  }
-
-
-  import PassengerInfoParser.FlightPassengerInfoProtocol._
   import ReportingJsonProtocol._
 
   val flightCodeRe = """\w{2,3}\d+""".r
   val portRe = """\w{2,3}""".r
   val route =
-    path("flight" / Segment) {
+    path("flight" / flightCodeRe) {
       (flightCode) =>
         get {
-          complete((aggregation ? ReportFlightCode(flightCode)).mapTo[List[VoyagePassengerInfo]]
-            .map {
-              _.map(_.toJson).mkString("[", ",", "]")
-            }
-          )
+          onComplete(flightInfoPaxSplitActor ? ReportFlightCode(flightCode)) {
+            case Success(s) => complete(s.asInstanceOf[List[VoyagePassengerInfo]].toJson.prettyPrint)
+          }
         }
     } ~
       path("flight-pax-splits" / "dest-" ~ portRe / "terminal-" ~ "\\w+".r /
@@ -103,7 +85,7 @@ class FlightPassengerSplitsReportingService(system: ActorSystem, aggregation: Ac
             val time: Option[DateTime] = parseUrlDateTime(arrivalTime)
             time match {
               case Some(t) =>
-                onComplete(calculateSplits(aggregation)(destPort, terminalName, flightCode, t)) {
+                onComplete(calculateSplits(flightInfoPaxSplitActor)(destPort, terminalName, flightCode, t)) {
                   case Success(value: List[VoyagePaxSplits]) =>
                     log.info(s"Got some value ${value}")
                     complete(value.toJson.prettyPrint)
@@ -136,8 +118,7 @@ object FlightPassengerSplitsReportingService {
 
   def calculateSplits(aggregator: AskableActorRef)
                      (destPort: String, terminalName: String, flightCode: String, arrivalTime: DateTime)(implicit timeout: Timeout, ec: ExecutionContext) = {
-    val ccAndFnOpt = getCarrierCodeAndFlightNumber(flightCode)
-    ccAndFnOpt match {
+    getCarrierCodeAndFlightNumber(flightCode) match {
       case Some((cc, fn)) => aggregator ? ReportVoyagePaxSplit(destPort, cc, fn, arrivalTime)
       case None => Future.failed(new Exception(s"couldn't get carrier and voyage number from $flightCode"))
     }

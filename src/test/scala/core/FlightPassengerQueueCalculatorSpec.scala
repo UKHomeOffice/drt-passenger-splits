@@ -1,5 +1,6 @@
 package core
 
+import core.PassengerQueueTypes.PaxTypeAndQueueCount
 import core.PassengerTypeCalculator.CountryCodes
 import org.specs2.mutable.Specification
 import org.specs2.matcher.Matchers
@@ -41,13 +42,13 @@ class FlightPassengerQueueCalculatorSpec extends Specification with Matchers wit
         NationalVisa -> 5
       )
       val calculatedDeskCounts = calculateQueuePaxCounts(passengerTypeCounts)
-      calculatedDeskCounts should beEqualTo(Map(
-        (EeaMachineReadable, egate) -> 12,
-        (EeaMachineReadable, eeaDesk) -> 8,
-        (EeaNonMachineReadable, eeaDesk) -> 10,
-        (NationalNonVisa, nationalsDesk) -> 10,
-        (NationalVisa, nationalsDesk) -> 5
-      ))
+      calculatedDeskCounts.toSet should beEqualTo(List(
+        PaxTypeAndQueueCount(EeaMachineReadable, egate, 12),
+        PaxTypeAndQueueCount(EeaMachineReadable, eeaDesk, 8),
+        PaxTypeAndQueueCount(EeaNonMachineReadable, eeaDesk, 10),
+        PaxTypeAndQueueCount(NationalNonVisa, nationalsDesk, 10),
+        PaxTypeAndQueueCount(NationalVisa, nationalsDesk, 5)
+      ).toSet)
     }
     "Given different counts of passenger types, " +
       "And a 'machineRead to desk percentage' of 80% " +
@@ -58,15 +59,15 @@ class FlightPassengerQueueCalculatorSpec extends Specification with Matchers wit
         NationalNonVisa -> 50,
         NationalVisa -> 10
       )
-      val expectedDeskPaxCounts = Map(
-        (EeaMachineReadable, egate) -> 60,
-        (EeaMachineReadable, eeaDesk) -> 40,
-        (EeaNonMachineReadable, eeaDesk) -> 15,
-        (NationalNonVisa, nationalsDesk) -> 50,
-        (NationalVisa, nationalsDesk) -> 10
+      val expectedDeskPaxCounts = Set(
+        PaxTypeAndQueueCount(EeaMachineReadable, egate, 60),
+        PaxTypeAndQueueCount(EeaMachineReadable, eeaDesk, 40),
+        PaxTypeAndQueueCount(EeaNonMachineReadable, eeaDesk, 15),
+        PaxTypeAndQueueCount(NationalNonVisa, nationalsDesk, 50),
+        PaxTypeAndQueueCount(NationalVisa, nationalsDesk, 10)
       )
       val calculatedDeskCounts = calculateQueuePaxCounts(passengerTypeCounts)
-      calculatedDeskCounts should beEqualTo(expectedDeskPaxCounts)
+      calculatedDeskCounts.toSet should beEqualTo(expectedDeskPaxCounts)
     }
     "Given just some nationals on visa and non visa" +
       "Then we can generate counts of types of passengers in queues" in {
@@ -74,21 +75,21 @@ class FlightPassengerQueueCalculatorSpec extends Specification with Matchers wit
         NationalNonVisa -> 50,
         NationalVisa -> 10
       )
-      val expectedDeskPaxCounts = Map(
-        (NationalVisa, nationalsDesk) -> 10,
-        (NationalNonVisa, nationalsDesk) -> 50
+      val expectedDeskPaxCounts = Set(
+        PaxTypeAndQueueCount(NationalVisa, nationalsDesk, 10),
+        PaxTypeAndQueueCount(NationalNonVisa, nationalsDesk, 50)
       )
       val calculatedDeskCounts = calculateQueuePaxCounts(passengerTypeCounts)
-      calculatedDeskCounts should ===(expectedDeskPaxCounts)
+      calculatedDeskCounts.toSet === expectedDeskPaxCounts
     }
 
     "Given some passenger info parsed from the AdvancePassengerInfo" in {
       import CountryCodes._
       "Then we can calculate passenger types and queues from that" in {
         val passengerInfos = PassengerInfoJson(Passport, UK, "EEA", None) :: Nil
-        PassengerQueueCalculator.convertPassengerInfoToPaxQueueCounts(passengerInfos) should beEqualTo(Map(
-          (EeaMachineReadable, eeaDesk) -> 1,
-          (EeaMachineReadable, egate) -> 0
+        PassengerQueueCalculator.convertPassengerInfoToPaxQueueCounts(passengerInfos) should beEqualTo(List(
+          PaxTypeAndQueueCount(EeaMachineReadable, eeaDesk, 1),
+          PaxTypeAndQueueCount(EeaMachineReadable, egate, 0)
         ))
       }
     }
@@ -101,13 +102,13 @@ class FlightPassengerQueueCalculatorSpec extends Specification with Matchers wit
     s2"""${
       "NationalityCountryEEAFlag" | "DocumentIssuingCountryCode" | "DocumentType" | "PassengerType" |>
         "EEA" ! Germany ! "P" ! EeaMachineReadable |
-        ""    ! "NZL" ! "P" ! NationalNonVisa |
-        ""    ! "NZL" ! "V" ! NationalVisa |
-        ""    ! "AUS" ! "V" ! NationalVisa |
-        EEA   ! Greece ! "P" ! EeaNonMachineReadable |
-        EEA   ! Italy ! "P" ! EeaNonMachineReadable |
-        EEA   ! Portugal ! "P" ! EeaNonMachineReadable |
-        EEA   ! Slovakia ! "P" ! EeaNonMachineReadable | {
+        "" ! "NZL" ! "P" ! NationalNonVisa |
+        "" ! "NZL" ! "V" ! NationalVisa |
+        "" ! "AUS" ! "V" ! NationalVisa |
+        EEA ! Greece ! "P" ! EeaNonMachineReadable |
+        EEA ! Italy ! "P" ! EeaNonMachineReadable |
+        EEA ! Portugal ! "P" ! EeaNonMachineReadable |
+        EEA ! Slovakia ! "P" ! EeaNonMachineReadable | {
         (countryFlag, documentCountry, documentType, passengerType) =>
           paxType(countryFlag, documentCountry, Option(documentType)) must_== passengerType
       }

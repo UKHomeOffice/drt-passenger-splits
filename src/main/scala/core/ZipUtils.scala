@@ -3,7 +3,7 @@ package core
 import java.io.Closeable
 import java.nio.charset.StandardCharsets._
 import java.util.zip.{ZipEntry, ZipInputStream}
-
+import scala.collection.JavaConversions._
 import scala.collection.mutable.ArrayBuffer
 
 object ZipUtils {

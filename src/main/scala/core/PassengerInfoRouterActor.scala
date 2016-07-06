@@ -21,50 +21,87 @@ object PassengerInfoRouterActor {
 
   case class FlightNotFound(carrierCode: String, flightCode: String, scheduledArrivalDateTime: DateTime)
 
-  object ProcessedFlightInfo
+  case object ProcessedFlightInfo
 
-  object LogStatus
+  case object LogStatus
 
 }
 
-class PassengerInfoByPortRouter extends Actor with PassengerQueueCalculator with ActorLogging {
-  var as = Map.empty[String, ActorRef]
+trait SimpleRouterActor[C <: Actor] {
+  self: Actor with ActorLogging =>
+  var childActorMap = Map.empty[String, ActorRef]
 
-  def getRCActor(id: String) = as get id getOrElse {
-    val c = context actorOf Props[PassengerInfoRouterActor]
-    as += id -> c
+  def childProps: Props
+
+  def getRCActor(id: String) = childActorMap get id getOrElse {
+    val c = context actorOf childProps
+    childActorMap += id -> c
     context watch c
     log.info(s"created actor ${id}")
     c
   }
+}
 
-  def receive = {
+class PassengerInfoByPortRouter extends
+  Actor with PassengerQueueCalculator with ActorLogging
+  with SimpleRouterActor[PassengerInfoRouterActor] {
+
+  def childProps = Props[PassengerInfoRouterActor]
+
+  def receive: PartialFunction[Any, Unit] = {
     case info: VoyagePassengerInfo =>
-      val child = getRCActor(s"pax-split-calculator-${info.ArrivalPortCode}-${info.CarrierCode}")
+      val child = getRCActor(childName(info.ArrivalPortCode, info.CarrierCode))
       child.tell(info, sender)
     case report: ReportVoyagePaxSplit =>
-      val child = getRCActor(s"pax-split-calculator-${report.destinationPort}-${report.carrierCode}")
+      val child = getRCActor(childName(report.destinationPort, report.carrierCode))
       child.tell(report, sender)
     case report: ReportFlightCode =>
       ???
     case LogStatus =>
-      as.values.foreach(_ ! LogStatus)
+      childActorMap.values.foreach(_ ! LogStatus)
+  }
+
+  def childName(arrivalPortCode: String, carrierCode: String): String = {
+    s"pax-split-calculator-${arrivalPortCode}"
   }
 }
 
-class PassengerInfoRouterActor extends Actor with PassengerQueueCalculator with ActorLogging {
-  var myFlights = List[VoyagePassengerInfo]()
-  var count = 0
+class PassengerInfoRouterActor extends Actor with ActorLogging
+  with SimpleRouterActor[SingleFlightActor] {
+
+  def childProps = Props(classOf[SingleFlightActor])
 
   def receive = {
     case info: VoyagePassengerInfo =>
-      myFlights = info :: myFlights.filterNot(doesFlightMatch(info, _))
-      count += 1
+      val child = getRCActor(childName(info.ArrivalPortCode, info.CarrierCode, info.VoyageNumber, info.scheduleArrivalDateTime.get))
+      child.tell(info, sender)
+    case report: ReportVoyagePaxSplit =>
+      val child = getRCActor(childName(report.destinationPort, report.carrierCode, report.voyageNumber,
+        report.scheduledArrivalDateTime))
+      child.tell(report, sender)
+    case report: ReportFlightCode =>
+      (childActorMap.values).foreach { case child => child.tell(report, sender) }
+    case LogStatus =>
+      childActorMap.values.foreach(_ ! LogStatus)
+  }
+
+  def childName(port: String, carrierCode: String, voyageNumber: String, scheduledArrivalDt: DateTime) = {
+    s"flight-pax-calculator-$port-$carrierCode-$voyageNumber-$scheduledArrivalDt"
+  }
+}
+
+class SingleFlightActor
+  extends Actor with PassengerQueueCalculator with ActorLogging {
+  var latestMessage: Option[VoyagePassengerInfo] = None
+
+  def receive = {
+    case info: VoyagePassengerInfo =>
+      latestMessage = Option(info)
       sender ! ProcessedFlightInfo
     case ReportVoyagePaxSplit(port, carrierCode, voyageNumber, scheduledArrivalDateTime) =>
       log.info(s"Report flight split for $port $carrierCode $voyageNumber $scheduledArrivalDateTime")
-//      log.info(s"Current flights ${myFlights}")
-      val matchingFlights: Option[VoyagePassengerInfo] = myFlights.find {
+//      log.info(s"Current flights ${latestMessage}")
+      val matchingFlights: Option[VoyagePassengerInfo] = latestMessage.find {
         (flight) => {
           doesFlightMatch(carrierCode, voyageNumber, scheduledArrivalDateTime, flight)
         }
@@ -81,12 +118,12 @@ class PassengerInfoRouterActor extends Actor with PassengerQueueCalculator with 
           sender ! FlightNotFound(carrierCode, voyageNumber, scheduledArrivalDateTime)
       }
     case ReportFlightCode(flightCode) =>
-      val matchingFlights: List[VoyagePassengerInfo] = myFlights.filter(_.flightCode == flightCode)
+      val matchingFlights: Option[VoyagePassengerInfo] = latestMessage.filter(_.flightCode == flightCode)
       log.info(s"Will reply ${matchingFlights}")
-
-      sender ! matchingFlights
+      for (mf <- matchingFlights)
+        sender ! List(mf)
     case LogStatus =>
-      log.info(s"Current Status ${myFlights}")
+      log.info(s"Current Status ${latestMessage}")
   }
 
   def doesFlightMatch(info: VoyagePassengerInfo, existingMessage: VoyagePassengerInfo): Boolean = {

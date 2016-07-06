@@ -19,7 +19,7 @@ class ZipSpec extends Specification with Matchers {
   "Can extract file content from a zip" >> {
     "given a zip file inputstream" in {
       val results = ZipUtils.usingZip(new ZipInputStream(openResourceZip)) {
-        zip =>
+        (zip: ZipInputStream) =>
           val unzippedStream: Stream[UnzippedFileContent] = ZipUtils.unzipAllFilesInStream(zip)
           unzippedStream.toList
       }

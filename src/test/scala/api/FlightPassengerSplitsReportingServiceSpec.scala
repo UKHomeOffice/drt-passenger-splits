@@ -26,7 +26,7 @@ class FlightPassengerSplitsReportingServiceSpec extends Specification with After
     val aggregationRef: ActorRef = system.actorOf(Props[PassengerInfoRouterActor])
     val serviceAgg = new FlightPassengerSplitsReportingService(system, aggregationRef)
     aggregationRef ! VoyagePassengerInfo(EventCodes.DoorsClosed,
-      "LHR", "123", "BA", "2015-05-01", "14:55", PassengerInfoJson(Some("P"), "GBR", "EEA", None) :: Nil)
+      "LHR", "123", "BA", "2015-05-01", "14:55:00", PassengerInfoJson(Some("P"), "GBR", "EEA", None) :: Nil)
 
     "the most simple and direct route" in {
       Get("/flight/BA123") ~> serviceAgg.route ~> check {
@@ -34,7 +34,7 @@ class FlightPassengerSplitsReportingServiceSpec extends Specification with After
           """[{"ScheduledDateOfArrival":"2015-05-01",
             "EventCode": "DC",
              "PassengerList":[{"DocumentType":"P","DocumentIssuingCountryCode":"GBR","NationalityCountryEEAFlag":"EEA"}],
-             "ScheduledTimeOfArrival": "14:55",
+             "ScheduledTimeOfArrival": "14:55:00",
               "CarrierCode":"BA","VoyageNumber":"123","ArrivalPortCode":"LHR"}]
           """.stripMargin.parseJson
       }
