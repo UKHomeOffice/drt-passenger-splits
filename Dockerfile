@@ -11,13 +11,11 @@ RUN \
   echo 'export PATH=~/scala-$SCALA_VERSION/bin:$PATH' >> /root/.bashrc
 
 # Install sbt
-RUN \
-  curl https://bintray.com/sbt/rpm/rpm | tee /etc/yum.repos.d/bintray-sbt-rpm.repo \
-  yum install sbt
+RUN curl https://bintray.com/sbt/rpm/rpm | tee /etc/yum.repos.d/bintray-sbt-rpm.repo
+RUN yum install sbt
 
 COPY . /root/appbuild
 
 WORKDIR /root/appbuild/
 
-#RUN \
-#  sbt compile
+RUN sbt compile
