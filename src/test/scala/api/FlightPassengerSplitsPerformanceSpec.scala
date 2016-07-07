@@ -1,53 +1,32 @@
-//package api
-//
-//import akka.actor._
-//import akka.event.Logging
-//import akka.testkit.{TestActorRef, TestKitBase, TestKit, ImplicitSender}
-//import core.PassengerInfoRouterActor.ProcessedFlightInfo
-//import core.{PassengerInfoByPortRouter, PassengerTypeCalculator, PassengerInfoRouterActor}
-//import org.specs2.mutable.Specification
-//import org.specs2.specification.AfterAll
-//import parsing.PassengerInfoParser._
-//import spray.http.{DateTime, StatusCodes}
-//import spray.json._
-//import spray.routing.Directives
+package api
+
+import akka.actor._
+import akka.event.Logging
+import akka.testkit.{TestActorRef, TestKitBase, TestKit, ImplicitSender}
+import core.PassengerInfoRouterActor.ProcessedFlightInfo
+import core.{PassengerInfoByPortRouter, PassengerTypeCalculator, PassengerInfoRouterActor}
+import org.specs2.mutable.Specification
+import org.specs2.specification.AfterAll
+import parsing.PassengerInfoParser._
+import spray.http.{DateTime, StatusCodes}
+import spray.json._
+import spray.routing.Directives
 import spray.testkit.Specs2RouteTest
 import org.scalacheck._
-//import scala.annotation.tailrec
-//import scala.concurrent.duration._
-//
-//import scala.collection.immutable.IndexedSeq
-//
-//object PassengerInfoBatchComplete
-//
-//import System.nanoTime
-//
-//trait SimpleProfiler {
-//  def profile[R](code: => R, t: Long = nanoTime) = (code, nanoTime - t)
-//}
-//
-//case class PassengerInfoBatchActor(replyActor: ActorRef,
-//                                   passengerInfoRoutingRef: ActorRef,
-//                                   flights: Seq[VoyagePassengerInfo],
-//                                   description: String) extends Actor with ActorLogging {
-//  var received = 0
-//
-//  def receive = {
-//    case "Begin" =>
-//      log.info(s"Dates to process ${description}")
-//      flights foreach {
-//        (flight) => passengerInfoRoutingRef ! flight
-//      }
-//    case ProcessedFlightInfo =>
-//      if (received % 1000 == 0) log.info(s"${description} processed flight info ${received}")
-//      received += 1
-//      if (received == flights.length) {
-//        log.info(s"${description} Batch complete")
-//        replyActor ! PassengerInfoBatchComplete
-//        self ! PoisonPill
-//      }
-//  }
-//}
+import scala.annotation.tailrec
+import scala.concurrent.duration._
+
+import scala.collection.immutable.IndexedSeq
+
+object PassengerInfoBatchComplete
+
+import System.nanoTime
+
+trait SimpleProfiler {
+  def profile[R](code: => R, t: Long = nanoTime) = (code, nanoTime - t)
+}
+
+
 //
 //class FlightPassengerSplitsPerformanceSpec extends Specification with AfterAll with Directives
 //  with Specs2RouteTest
@@ -134,7 +113,7 @@ import org.scalacheck._
 //  val serviceAgg = new FlightPassengerSplitsReportingService(system, aggregationRef)
 //
 //
-//  "Given lots of flight events" skipped uuu{
+//  "Given lots of flight events" skipped {
 //    tag("performance")
 //    val totalEvents: Int = 1000
 //    val flightsToFind: List[VoyagePassengerInfo] = initialiseFlightsWithStream(aggregationRef, totalEvents)

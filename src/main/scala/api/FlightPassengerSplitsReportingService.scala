@@ -33,10 +33,6 @@ trait FlightPassengerSplitsReportingServiceJsonFormats {
 
     //    implicit object FlightInfoJsonFormat extends JsonWriter[VoyagePaxSplits] { def write(obj: VoyagePaxSplits) = JsString("hellobob") }
 
-    implicit object FlightPaxSplitsInfoJsonFormat extends JsonWriter[PaxSplits] {
-      def write(obj: PaxSplits) = JsString("hellobobsplit")
-    }
-
     implicit val paxTypeAndQueueFormat = jsonFormat3(PaxTypeAndQueueCount)
     implicit val voyagePaxSplitsFormat: RootJsonFormat[VoyagePaxSplits] = jsonFormat6(VoyagePaxSplits)
 
@@ -87,7 +83,6 @@ class FlightPassengerSplitsReportingService(system: ActorSystem, flightInfoPaxSp
               case Some(t) =>
                 onComplete(calculateSplits(flightInfoPaxSplitActor)(destPort, terminalName, flightCode, t)) {
                   case Success(value: List[VoyagePaxSplits]) =>
-                    log.info(s"Got some value ${value}")
                     complete(value.toJson.prettyPrint)
                   case Success(flightNotFound: FlightNotFound) =>
                     complete(StatusCodes.NotFound)
@@ -99,6 +94,30 @@ class FlightPassengerSplitsReportingService(system: ActorSystem, flightInfoPaxSp
               case None =>
                 failWith(new Exception(s"Bad nearly ISO datetime ${arrivalTime}"))
             }
+          }
+      } ~
+      path("flight-pax-splits" / "dest-" ~ portRe /) {
+        (port) =>
+          parameters('from.?, 'to.?) {
+            (from: Option[String], to) =>
+              get {
+                log.info(s"GET flight-pax-splits to $port between $from, $to")
+                val timeFrom: Option[DateTime] = parseUrlDateTime(from.getOrElse(""))
+                val timeTo: Option[DateTime] = parseUrlDateTime(to.getOrElse(""))
+                (timeFrom, timeTo) match {
+                  case (Some(tfrom), Some(tto)) =>
+                    onComplete(calculateSplitsFromTimeRange(flightInfoPaxSplitActor)(port, tfrom, tto)) {
+                      case Success(value) =>
+                        val asList = value.asInstanceOf[List[VoyagePaxSplits]]
+                        complete(asList.toJson.prettyPrint)
+                      case Failure(ex) =>
+                        log.error(ex, s"Failed to complete flight-pax-splits between times")
+                        failWith(ex)
+                    }
+                  case error =>
+                    failWith(new Exception(s"Bad nearly ISO datetime ${error}"))
+                }
+              }
           }
       }
 }
@@ -122,6 +141,12 @@ object FlightPassengerSplitsReportingService {
       case Some((cc, fn)) => aggregator ? ReportVoyagePaxSplit(destPort, cc, fn, arrivalTime)
       case None => Future.failed(new Exception(s"couldn't get carrier and voyage number from $flightCode"))
     }
+  }
+
+  def calculateSplitsFromTimeRange(aggregator: AskableActorRef)
+                                  (destPort: String, arrivalTimeFrom: DateTime, arrivalTimeTo: DateTime)
+                                  (implicit timeout: Timeout, ec: ExecutionContext) = {
+    aggregator ? ReportVoyagePaxSplitBetween(destPort, arrivalTimeFrom, arrivalTimeTo)
   }
 
   val flightCodeRe = """(\w{2})(\d{1,5})""".r("carrierCode", "voyageNumber")
