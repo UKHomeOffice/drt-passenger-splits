@@ -2,6 +2,7 @@ package api
 
 import core.{CoreActors, Core}
 import akka.actor.Props
+import shapeless.get
 import spray.routing.RouteConcatenation
 
 /**
@@ -17,7 +18,7 @@ trait Api extends RouteConcatenation {
 
   val routes =
     new FlightPassengerSplitsReportingService(system, flightPassengerReporter).route ~
-    new MessengerService(messenger).route
+    new UpcheckService().route
 
   val rootService = system.actorOf(Props(new RoutedHttpService(routes)))
 
