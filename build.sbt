@@ -49,6 +49,8 @@ scalacOptions ++= Seq(
   "-encoding", "UTF-8"
 )
 
-scalacOptions in Test ++= Seq("-Yrangepos")
+scalacOptions in Test ++= Seq("-Yrangepos",
+  "-target:jvm-1.7"
+)
 
 testOptions += Tests.Argument(TestFrameworks.JUnit, "-v")
