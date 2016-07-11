@@ -29,16 +29,10 @@ spec:
           value: "FALSE"
         - name: NAXSI_USE_DEFAULT_RULES
           value: "FALSE"
-        volumeMounts:
-          - name: external-tls
-            mountPath: /etc/keys
-            readOnly: true
+        - name: HTTPS_REDIRECT
+          value: "FALSE"
       - name: app
         image: ${app_tag}
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
-      volumes:
-        - name: external-tls
-          secret:
-            secretName: external-tls
