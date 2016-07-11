@@ -6,8 +6,10 @@ def build(repo_name) {
     sh "git rev-parse --short HEAD > GIT_COMMIT"
     git_commit=readFile('GIT_COMMIT').trim()
 
-    sh 'docker build . | tee build.log || exit 1; ID=$(tail -1 build.log | awk \'{print $3;}\'); echo $ID > DOCKER_HASH'
+//    sh 'docker build . | tee build.log || exit 1; ID=$(tail -1 build.log | awk \'{print $3;}\'); echo $ID > DOCKER_HASH'
+    sh 'docker build -t test .'
     docker_hash=readFile('DOCKER_HASH').trim()
+    docker_hash='test'
 
     app_tag="git-${git_commit}-docker-${docker_hash}"
     app_tag="latest"
