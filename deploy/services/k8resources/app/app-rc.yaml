@@ -38,6 +38,12 @@ spec:
         - containerPort: 8080
         env:
         - name: AWS_ACCESS_KEY_ID
-          value: ${access_key}
+          valueFrom:
+            secretKeyRef:
+              name: s3-secrets
+              key: access_key
         - name: AWS_SECRET_ACCESS_KEY
-          value: ${secret_key}
+          valueFrom:
+            secretKeyRef:
+              name: s3-secrets
+              key: secret_key
