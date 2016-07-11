@@ -1,0 +1,17 @@
+---
+Kb8Context:
+  cluster: dsp-dev
+  user: formsso.ci
+  namespace: drt-dev
+
+
+Fn::FileData:
+- name: tls_tag
+  files:
+  - ../../artefacts/tls_tag
+- name: app_tag
+  files:
+  - ../../artefacts/app_tag
+
+APP_HTTP_PORT: 30241
+APP_HTTPS_PORT: 30242
