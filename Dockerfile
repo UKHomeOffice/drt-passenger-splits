@@ -19,3 +19,5 @@ COPY . /root/appbuild
 WORKDIR /root/appbuild/
 
 RUN sbt compile
+
+CMD java -cp target/

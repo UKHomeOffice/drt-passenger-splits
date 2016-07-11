@@ -65,7 +65,7 @@ class PassengerInfoByPortRouter extends
       val child = getRCActor(childName(report.destinationPort))
       child.tell(report, sender)
     case report: ReportFlightCode =>
-      childActorMap.values.foreach(_ !(report, sender))
+      childActorMap.values.foreach(_.tell(report, sender))
     case LogStatus =>
       childActorMap.values.foreach(_ ! LogStatus)
   }
