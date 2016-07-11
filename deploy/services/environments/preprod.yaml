@@ -2,7 +2,7 @@
 Kb8Context:
   cluster: dsp-dev
   user: formsso.ci
-  namespace: gro-form-preprod
+  namespace: drt-preprod
 
 Fn::FileData:
 - name: tls_tag
@@ -11,17 +11,14 @@ Fn::FileData:
 - name: app_tag
   files:
   - ../../artefacts/app_tag
-- name: redis_tag
-  files:
-  - ../../artefacts/redis_tag
-- name: tls_key
+- name: access_key
   encode: base64
   files:
-  - ../secrets/preprod/gro-form-key
-- name: tls_crt
+  - ../secrets/dev/access_key
+- name: secret_key
   encode: base64
   files:
-  - ../secrets/preprod/gro-form-crt
+  - ../secrets/dev/secret_key
 
 GRO_HTTP_PORT: 30273
 GRO_HTTPS_PORT: 30274
