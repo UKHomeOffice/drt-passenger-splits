@@ -16,6 +16,8 @@ resolvers ++= Seq(
 
 val sprayVersion: String = "1.3.3"
 
+mainClass in (Compile, run) := Some("Rest")
+
 
 libraryDependencies ++= Seq(
   "com.github.seratch" %% "awscala" % "0.5.+",
