@@ -37,7 +37,7 @@ class FlightPassengerInfoRouterActorSpec extends
           PaxTypeAndQueueCount(PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.eeaDesk, 1),
           PaxTypeAndQueueCount(PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.egate, 0)
         )
-        expectMsg(VoyagePaxSplits("LGW", "EZ", "12345", 1, DateTime(2017, 4, 2, 15, 33), expectedPaxSplits) :: Nil)
+        expectMsg(VoyagePaxSplits("LGW", "EZ", "12345", 1, DateTime(2017, 4, 2, 15, 33), expectedPaxSplits))
         success
       }
     }
@@ -57,7 +57,7 @@ class FlightPassengerInfoRouterActorSpec extends
           PaxTypeAndQueueCount(PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.egate, 0),
           PaxTypeAndQueueCount(PassengerQueueTypes.PaxTypes.NATIONALNONVISA, PassengerQueueTypes.Desks.nationalsDesk, 1)
         )
-        expectMsg(VoyagePaxSplits("STN", "EZ", "789", 2, scheduleArrivalTime, expectedPaxSplits) :: Nil)
+        expectMsg(VoyagePaxSplits("STN", "EZ", "789", 2, scheduleArrivalTime, expectedPaxSplits))
         success
       }
     }
@@ -73,7 +73,7 @@ class FlightPassengerInfoRouterActorSpec extends
           PaxTypeAndQueueCount(PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.eeaDesk, 32),
           PaxTypeAndQueueCount(PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.egate, 48),
           PaxTypeAndQueueCount(PassengerQueueTypes.PaxTypes.NATIONALNONVISA, PassengerQueueTypes.Desks.nationalsDesk, 20)
-        )) :: Nil)
+        )))
         success
       }
     }
