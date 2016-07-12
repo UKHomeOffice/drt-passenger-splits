@@ -41,9 +41,9 @@ spec:
           valueFrom:
             secretKeyRef:
               name: s3-secrets
-              key: access_key
+              key: access-key
         - name: AWS_SECRET_ACCESS_KEY
           valueFrom:
             secretKeyRef:
               name: s3-secrets
-              key: secret_key
+              key: secret-key
