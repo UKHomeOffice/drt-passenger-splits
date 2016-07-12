@@ -21,7 +21,7 @@ object PassengerInfoRouterActor {
                              totalPaxCount: Int,
                              scheduledArrivalDateTime: DateTime,
                              paxSplits: PaxTypeAndQueueCounts)
-
+  case class VoyagesPaxSplits(voyageSplits: List[VoyagePaxSplits])
   case class ReportFlightCode(flightCode: String)
 
   case class FlightNotFound(carrierCode: String, flightCode: String, scheduledArrivalDateTime: DateTime)
@@ -65,7 +65,7 @@ class PassengerInfoByPortRouter extends
       val child = getRCActor(childName(report.destinationPort))
       child.tell(report, sender)
     case report: ReportFlightCode =>
-      childActorMap.values.foreach(_ !(report, sender))
+      childActorMap.values.foreach(_.tell(report, sender))
     case LogStatus =>
       childActorMap.values.foreach(_ ! LogStatus)
   }
@@ -165,7 +165,7 @@ class SingleFlightActor
     log.info(s"$self sending splits ${replyTo}")
     replyTo ! VoyagePaxSplits(port,
       carrierCode, voyageNumber, flight.PassengerList.length, scheduledArrivalDateTime,
-      paxTypeAndQueueCount) :: Nil
+      paxTypeAndQueueCount)
     log.info(s"$self sent response")
   }
 
@@ -199,23 +199,23 @@ class ResponseCollationActor(childActors: List[ActorRef], report: ReportVoyagePa
         ref ! report
       })
       log.info("Sent requests")
-    case vpi: List[VoyagePaxSplits] =>
+    case vpi: VoyagePaxSplits =>
       log.info(s"Got a response! $vpi")
       responseCount += 1
-      responses = vpi ::: responses
-      amIDone
+      responses = vpi :: responses
+      checkIfDoneAndDie()
     case FlightNotFound =>
       log.info(s"Got a not found")
       responseCount += 1
-      amIDone
+      checkIfDoneAndDie()
     case default =>
-      log.error(s"$self unhandlssage $default")
+      log.error(s"$self unhandled message $default")
   }
 
-  def amIDone = {
+  def checkIfDoneAndDie() = {
     log.info(s"Have ${responseCount}/${childActors.length} responses")
     if (responseCount >= childActors.length) {
-      responseRequestedBy ! responses
+      responseRequestedBy ! VoyagesPaxSplits(responses)
       self ! PoisonPill
     }
   }
