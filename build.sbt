@@ -6,6 +6,7 @@ version := "1.0"
 
 scalaVersion := "2.11.8"
 
+
 resolvers ++= Seq(
   "spray repo" at "http://repo.spray.io",
   "spray nightlies" at "http://nightlies.spray.io",
@@ -18,6 +19,8 @@ val sprayVersion: String = "1.3.3"
 
 mainClass in (Compile, run) := Some("Rest")
 
+Defaults.itSettings
+lazy val `it-config-sbt-project` = project.in(file(".")).configs(IntegrationTest)
 
 libraryDependencies ++= Seq(
   "com.github.seratch" %% "awscala" % "0.5.+",
@@ -32,11 +35,11 @@ libraryDependencies ++= Seq(
   "io.spray" %% "spray-client" % sprayVersion,
   "io.spray" %% "spray-routing" % sprayVersion,
   "io.spray" %% "spray-json" % "1.3.2",
-  "org.specs2" %% "specs2-core" % "3.8.3" % "test",
-  "org.specs2" %% "specs2-scalacheck" % "3.8.4",
+  "org.specs2" %% "specs2-core" % "3.8.3" % "it,test",
+  "org.specs2" %% "specs2-scalacheck" % "3.8.4" % "it,test",
   //https://groups.google.com/forum/#!topic/spray-user/2T6SBp4OJeI for this exclusion
   "io.spray" %% "spray-testkit" % sprayVersion % "test" exclude("org.specs2", "specs2_2.11"),
-  "com.typesafe.akka" %% "akka-testkit" % "2.4.6" % "test",
+  "com.typesafe.akka" %% "akka-testkit" % "2.4.6" % "it,test",
   "com.typesafe" % "config" % "1.3.0",
   "com.novocode" % "junit-interface" % "0.7" % "test->default"
 )
