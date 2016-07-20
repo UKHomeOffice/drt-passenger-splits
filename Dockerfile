@@ -19,7 +19,7 @@ COPY . /root/appbuild
 
 WORKDIR /root/appbuild/
 
-RUN sbt compile
+RUN sbt test
 
 CMD sbt run
 
