@@ -1,9 +1,9 @@
-package api
+package restapi.upcheck
 
-import akka.actor.ActorRef
+import restapi.paxSplits.DefaultJsonFormats
+import spray.routing.{Directives, Route}
+
 import scala.concurrent.ExecutionContext
-import spray.routing.{Route, Directives}
-import core.MessengerActor
 
 class UpcheckService(implicit executionContext: ExecutionContext)
   extends Directives with DefaultJsonFormats {

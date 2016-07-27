@@ -1,4 +1,4 @@
-package api
+package restapi.paxSplits
 
 import scala.collection.immutable.Seq
 import akka.actor._

@@ -1,14 +1,12 @@
-package core
+package core.flightPaxSplits
 
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
 import core.PassengerQueueTypes.PaxTypeAndQueueCount
-import core.PassengerSplitsCalculator.PaxSplits
-import org.specs2.matcher.Matchers
+import core.{Core, CoreActors, PassengerInfoRouterActor, PassengerQueueTypes}
+import org.specs2.mutable.SpecificationLike
 import org.specs2.specification.AfterAll
-import parsing.PassengerInfoParser
-import parsing.PassengerInfoParser.{PassengerInfoJson, EventCodes, PassengerInfo, VoyagePassengerInfo}
-import org.specs2.mutable.{Specification, SpecificationLike}
+import parsing.PassengerInfoParser.{EventCodes, PassengerInfoJson, VoyagePassengerInfo}
 import spray.http.DateTime
 
 class FlightPassengerInfoRouterActorSpec extends

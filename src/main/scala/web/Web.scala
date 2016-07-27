@@ -1,7 +1,7 @@
 package web
 
 import core.{CoreActors, Core}
-import api.Api
+import restapi.paxSplits.PaxSplitsRestApi
 import akka.io.IO
 import spray.can.Http
 
@@ -17,7 +17,7 @@ import spray.can.Http
   * configuration, especially when it comes to the threading model.
   */
 trait Web {
-  this: Api with CoreActors with Core =>
+  this: PaxSplitsRestApi with CoreActors with Core =>
 
   IO(Http)(system) ! Http.Bind(rootService, "0.0.0.0",
     port = sys.env.getOrElse("HTTP_PORT", "8080").toInt)

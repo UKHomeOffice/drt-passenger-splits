@@ -1,9 +1,8 @@
-package core
+package core.flightPaxSplits
 
-import core.PassengerSplitsCalculator.PaxSplits
+import core.PassengerSplitsCalculator
 import org.specs2.matcher.Matchers
 import org.specs2.mutable.Specification
-import org.specs2.specification.Tables
 import parsing.PassengerInfoParser.PassengerInfo
 
 

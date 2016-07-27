@@ -1,4 +1,4 @@
-package api
+package restapi.paxSplits
 
 import akka.actor._
 import akka.event.Logging

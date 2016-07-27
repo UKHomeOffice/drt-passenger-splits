@@ -1,9 +1,9 @@
 import akka.actor.ActorRef
-import api.Api
+import restapi.paxSplits.PaxSplitsRestApi
 import core.{BootedCore, CoreActors}
 import s3.SimpleS3Poller
 import web.Web
 
-object Rest extends App with BootedCore with CoreActors with Api with Web with SimpleS3Poller
+object Rest extends App with BootedCore with CoreActors with PaxSplitsRestApi with Web with SimpleS3Poller
 
 

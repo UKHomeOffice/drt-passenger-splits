@@ -1,4 +1,4 @@
-package api
+package restapi.paxSplits
 
 import akka.actor._
 import akka.event.Logging
@@ -9,17 +9,10 @@ import parsing.PassengerInfoParser.{PassengerInfoJson, EventCodes, VoyagePasseng
 import spray.http.StatusCodes
 import spray.json.JsValue
 import spray.routing.Directives
-import spray.testkit.Specs2RouteTest
+import spray.testkit.{DeadLetterListener, DeadLetterFixture, Specs2RouteTest}
 import spray.json._
 import DefaultJsonProtocol._
 
-class DeadLetterListener extends Actor with ActorLogging {
-  def receive = {
-    case dl => {
-      log.info(s"DeadLetter: ${dl}")
-    }
-  }
-}
 
 class FlightPassengerSplitsBetweenTimesReportingServiceSpec extends Specification
   with AfterAll with Directives with Specs2RouteTest {
@@ -35,7 +28,6 @@ class FlightPassengerSplitsBetweenTimesReportingServiceSpec extends Specificatio
     val serviceAgg = new FlightPassengerSplitsReportingService(system, aggregationRef)
 
     "Given four flights," >> {
-
 
       val vpis = VoyagePassengerInfo(EventCodes.DoorsClosed,
         "LHR", "123", "BA", "2015-02-01", "22:11:00", PassengerInfoJson(Some("P"), "GBR", "EEA", None) :: Nil) ::

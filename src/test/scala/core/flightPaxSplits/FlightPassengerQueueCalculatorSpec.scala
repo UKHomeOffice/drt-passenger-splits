@@ -1,12 +1,13 @@
-package core
+package core.flightPaxSplits
 
+import core.PassengerQueueCalculator
+import core.PassengerQueueCalculator._
+import core.PassengerQueueTypes.Desks._
 import core.PassengerQueueTypes.PaxTypeAndQueueCount
 import core.PassengerTypeCalculator.CountryCodes
-import org.specs2.mutable.Specification
 import org.specs2.matcher.Matchers
+import org.specs2.mutable.Specification
 import org.specs2.specification.Tables
-import PassengerQueueCalculator._
-import PassengerQueueTypes.Desks._
 import parsing.PassengerInfoParser.PassengerInfoJson
 
 class FlightPassengerQueueCalculatorSpec extends Specification with Matchers with Tables {

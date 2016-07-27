@@ -1,7 +1,8 @@
-package api
+package restapi.paxSplits
 
 import core.{CoreActors, Core}
 import akka.actor.Props
+import restapi.upcheck.UpcheckService
 import shapeless.get
 import spray.routing.RouteConcatenation
 
@@ -11,7 +12,7 @@ import spray.routing.RouteConcatenation
  * Notice that it requires to be mixed in with ``core.CoreActors``, which provides access
  * to the top-level actors that make up the system.
  */
-trait Api extends RouteConcatenation {
+trait PaxSplitsRestApi extends RouteConcatenation {
   this: CoreActors with Core =>
 
   private implicit val _ = system.dispatcher

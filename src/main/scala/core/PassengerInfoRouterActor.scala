@@ -160,12 +160,12 @@ class SingleFlightActor
   def calculateAndSendPaxSplits(replyTo: ActorRef,
                                 port: String, carrierCode: String, voyageNumber: String, scheduledArrivalDateTime: DateTime, flight: VoyagePassengerInfo): Unit = {
     log.info(s"$self calculating splits")
-    val paxTypeAndQueueCount: PaxTypeAndQueueCounts = PassengerQueueCalculator.
+    val paxTypeAndQueueCounts: PaxTypeAndQueueCounts = PassengerQueueCalculator.
       convertPassengerInfoToPaxQueueCounts(flight.PassengerList)
     log.info(s"$self sending splits ${replyTo}")
     replyTo ! VoyagePaxSplits(port,
       carrierCode, voyageNumber, flight.PassengerList.length, scheduledArrivalDateTime,
-      paxTypeAndQueueCount)
+      paxTypeAndQueueCounts)
     log.info(s"$self sent response")
   }
 

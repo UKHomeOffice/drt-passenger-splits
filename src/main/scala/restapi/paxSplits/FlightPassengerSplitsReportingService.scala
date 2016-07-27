@@ -1,4 +1,4 @@
-package api
+package restapi.paxSplits
 
 import akka.actor.{ActorRef, ActorSystem}
 import akka.event.Logging
@@ -138,7 +138,8 @@ object FlightPassengerSplitsReportingService {
   }
 
   def calculateSplits(aggregator: AskableActorRef)
-                     (destPort: String, terminalName: String, flightCode: String, arrivalTime: DateTime)(implicit timeout: Timeout, ec: ExecutionContext) = {
+                     (destPort: String, terminalName: String, flightCode: String, arrivalTime: DateTime)
+                     (implicit timeout: Timeout, ec: ExecutionContext) = {
     getCarrierCodeAndFlightNumber(flightCode) match {
       case Some((cc, fn)) => aggregator ? ReportVoyagePaxSplit(destPort, cc, fn, arrivalTime)
       case None => Future.failed(new Exception(s"couldn't get carrier and voyage number from $flightCode"))

@@ -1,7 +1,7 @@
 package core
 
 import java.util.UUID
-import api.DefaultJsonFormats
+import restapi.paxSplits.DefaultJsonFormats
 
 /**
  * A "typical" user value containing its identity, name and email.

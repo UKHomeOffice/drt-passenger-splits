@@ -1,4 +1,4 @@
-package api
+package restapi.paxSplits
 
 import spray.json._
 import java.util.UUID

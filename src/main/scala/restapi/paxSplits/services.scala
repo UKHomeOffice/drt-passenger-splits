@@ -1,4 +1,4 @@
-package api
+package restapi.paxSplits
 
 import spray.http.StatusCodes._
 import spray.http._

@@ -1,4 +1,4 @@
-package api
+package restapi.paxSplits
 
 import core.PassengerInfoRouterActor.VoyagePaxSplits
 import core.PassengerQueueTypes.{PaxTypeAndQueueCount, Desks, PaxTypes}
