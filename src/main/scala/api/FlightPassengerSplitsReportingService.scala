@@ -82,11 +82,14 @@ class FlightPassengerSplitsReportingService(system: ActorSystem, flightInfoPaxSp
             time match {
               case Some(t) =>
                 onComplete(calculateSplits(flightInfoPaxSplitActor)(destPort, terminalName, flightCode, t)) {
-                  case Success(value: List[VoyagePaxSplits]) =>
-                    complete(value.toJson.prettyPrint)
-                  case Success(flightNotFound: FlightNotFound) =>
+                  case Success(value: VoyagePaxSplits) =>
+                    val asList = value :: Nil
+                    complete(asList.toJson.prettyPrint)
+                  case Success(FlightNotFound(cc, fc, sadt)) =>
                     complete(StatusCodes.NotFound)
-                  case Success(any) => failWith(new Exception("Unexpected result: " + any))
+                  case Success(s) =>
+                    log.error(s"Unexpected Success($s) in GET flight-pax-splits")
+                    complete(StatusCodes.InternalServerError)
                   case Failure(ex) =>
                     log.error(ex, s"Failed to complete for ${destPort} ${terminalName} ${flightCode} ${t}")
                     failWith(ex)
@@ -107,9 +110,8 @@ class FlightPassengerSplitsReportingService(system: ActorSystem, flightInfoPaxSp
                 (timeFrom, timeTo) match {
                   case (Some(tfrom), Some(tto)) =>
                     onComplete(calculateSplitsFromTimeRange(flightInfoPaxSplitActor)(port, tfrom, tto)) {
-                      case Success(value) =>
-                        val asList = value.asInstanceOf[List[VoyagePaxSplits]]
-                        complete(asList.toJson.prettyPrint)
+                      case Success(VoyagesPaxSplits(voyagePaxSplits)) =>
+                        complete(voyagePaxSplits.toJson.prettyPrint)
                       case Failure(ex) =>
                         log.error(ex, s"Failed to complete flight-pax-splits between times")
                         failWith(ex)

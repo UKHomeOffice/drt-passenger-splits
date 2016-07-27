@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: app
+spec:
+  replicas: 1
+  selector:
+    name: app
+  template:
+    metadata:
+      labels:
+        name: app
+    spec:
+      containers:
+      - name: tls
+        image: ${tls_tag}
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 443
+        - containerPort: 80
+        env:
+        - name: LOAD_BALANCER_CIDR
+          value: '10.50.0.0/22'
+        - name: PROXY_SERVICE_HOST
+          value: 127.0.0.1
+        - name: PROXY_SERVICE_PORT
+          value: "8080"
+        - name: ENABLE_UUID_PARAM
+          value: "FALSE"
+        - name: NAXSI_USE_DEFAULT_RULES
+          value: "FALSE"
+        - name: HTTPS_REDIRECT
+          value: "FALSE"
+      - name: app
+        image: ${app_tag}
+        imagePullPolicy: Always
+        env:
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                name: s3-secrets
+                key: access-key
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: s3-secrets
+                key: secret-key
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            cpu: 400m
+            memory: 3000Mi
+          requests:
+            cpu: 200m
+            memory: 2000Mi

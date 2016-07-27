@@ -12,12 +12,14 @@ RUN \
 
 # Install sbt
 RUN curl https://bintray.com/sbt/rpm/rpm | tee /etc/yum.repos.d/bintray-sbt-rpm.repo
-RUN yum install sbt
+
+RUN yum install -y sbt
 
 COPY . /root/appbuild
 
 WORKDIR /root/appbuild/
 
-RUN sbt compile
+RUN sbt test
 
-CMD java -cp target/
+CMD sbt run
+

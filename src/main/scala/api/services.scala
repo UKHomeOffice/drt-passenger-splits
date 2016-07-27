@@ -55,7 +55,7 @@ trait FailureHandling {
                                     error: StatusCode = InternalServerError)
                                    (implicit log: LoggingContext): Unit = {
     log.error(thrown, ctx.request.toString)
-    ctx.complete(error, message)
+    ctx.complete((error, message))
   }
 
 }
@@ -66,13 +66,13 @@ trait FailureHandling {
  *
  * @param route the (concatenated) route
  */
-class RoutedHttpService(route: Route) extends Actor with HttpService with SprayActorLogging {
+class RoutedHttpService(route: Route) extends Actor with HttpService with ActorLogging {
 
   implicit def actorRefFactory = context
 
   implicit val handler = ExceptionHandler {
     case NonFatal(ErrorResponseException(statusCode, entity)) => ctx =>
-      ctx.complete(statusCode, entity)
+      ctx.complete((statusCode, entity))
 
     case NonFatal(e) => ctx => {
       log.error(e, InternalServerError.defaultMessage)
@@ -100,7 +100,7 @@ trait CrossLocationRouteDirectives extends RouteDirectives {
   private class CompletionRoute[T : Marshaller](status: StatusCode, headers: List[HttpHeader], obj: T)
     extends StandardRoute {
     def apply(ctx: RequestContext): Unit = {
-      ctx.complete(status, headers, obj)
+      ctx.complete((status, headers, obj))
     }
   }
 }

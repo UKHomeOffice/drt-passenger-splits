@@ -123,7 +123,7 @@ class JsonCreationUnitTestsSpec extends Specification {
   //  "Can produce json from a VoyagePassengerSplits" in {
   //
   //  }
-  getClass.getClassLoader.getResourceAsStream("s3content/")
+  getClass.getClassLoader.getResourceAsStream("s3content")
 }
 
 class S3IntegrationSpec extends TestKit(ActorSystem())
