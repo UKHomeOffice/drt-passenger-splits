@@ -14,7 +14,7 @@ import scala.annotation.tailrec
 object PaxLoadCalculator {
   val paxType = (PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.eeaDesk)
 
-  def calculatePaxLoadByDesk(voyagePaxSplits: VoyagePaxSplits, flowRate: => Int): Map[Symbol, Seq[PaxLoad]] = {
+  def calculateVoyagePaxLoadByDesk(voyagePaxSplits: VoyagePaxSplits, flowRate: => Int): Map[Symbol, Seq[PaxLoad]] = {
     val firstMinute = voyagePaxSplits.scheduledArrivalDateTime
     val groupedByDesk: Map[Symbol, Seq[PaxTypeAndQueueCount]] = voyagePaxSplits.paxSplits.groupBy(_.queueType)
     groupedByDesk.mapValues(
@@ -46,7 +46,7 @@ class WorkloadCalculatorSpec extends Specification with Matchers with Tables {
 
       "and a flow rate of 10 / minutes" in {
         def flowRate = 10
-        val paxLoad = PaxLoadCalculator.calculatePaxLoadByDesk(voyagePaxSplits, flowRate)
+        val paxLoad = PaxLoadCalculator.calculateVoyagePaxLoadByDesk(voyagePaxSplits, flowRate)
 
         val paxType = (PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.eeaDesk)
 
@@ -67,7 +67,7 @@ class WorkloadCalculatorSpec extends Specification with Matchers with Tables {
 
       "and a flow rate of 10 / minutes" in {
         def flowRate = 10
-        val paxLoad = PaxLoadCalculator.calculatePaxLoadByDesk(voyagePaxSplits, flowRate)
+        val paxLoad = PaxLoadCalculator.calculateVoyagePaxLoadByDesk(voyagePaxSplits, flowRate)
 
         val paxType = (PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.eeaDesk)
 
@@ -88,8 +88,8 @@ class WorkloadCalculatorSpec extends Specification with Matchers with Tables {
       ))
 
       "and a flow rate of 10 / minutes" in {
-        def flowRate = 10
-        val paxLoad = PaxLoadCalculator.calculatePaxLoadByDesk(voyagePaxSplits, flowRate)
+        val flowRate = 10
+        val paxLoad = PaxLoadCalculator.calculateVoyagePaxLoadByDesk(voyagePaxSplits, flowRate)
 
         val paxType = (PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.eeaDesk)
         val nationalsPaxType = (PassengerQueueTypes.PaxTypes.EEAMACHINEREADABLE, PassengerQueueTypes.Desks.nationalsDesk)
