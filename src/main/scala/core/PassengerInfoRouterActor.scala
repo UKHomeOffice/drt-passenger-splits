@@ -2,6 +2,7 @@ package core
 
 import akka.actor.Actor.Receive
 import akka.actor._
+import akka.event.LoggingReceive
 import core.PassengerInfoRouterActor._
 import core.PassengerQueueTypes.PaxTypeAndQueueCounts
 import parsing.PassengerInfoParser.VoyagePassengerInfo
@@ -53,7 +54,7 @@ class PassengerInfoByPortRouter extends
 
   def childProps = Props[PassengerInfoRouterActor]
 
-  def receive: PartialFunction[Any, Unit] = {
+  def receive: PartialFunction[Any, Unit] = LoggingReceive {
     case info: VoyagePassengerInfo =>
       val child = getRCActor(childName(info.ArrivalPortCode))
       child.tell(info, sender)
@@ -80,7 +81,7 @@ class PassengerInfoRouterActor extends Actor with ActorLogging
 
   def childProps = Props(classOf[SingleFlightActor])
 
-  def receive = {
+  def receive = LoggingReceive {
     case info: VoyagePassengerInfo =>
       val child = getRCActor(childName(info.ArrivalPortCode, info.CarrierCode, info.VoyageNumber, info.scheduleArrivalDateTime.get))
       child.tell(info, sender)
@@ -111,7 +112,7 @@ class SingleFlightActor
   extends Actor with PassengerQueueCalculator with ActorLogging {
   var latestMessage: Option[VoyagePassengerInfo] = None
 
-  def receive = {
+  def receive = LoggingReceive {
     case info: VoyagePassengerInfo =>
       latestMessage = Option(info)
 //      log.info(s"${self} received ${info}")
@@ -141,7 +142,6 @@ class SingleFlightActor
       })
       matchingFlights match {
         case Some(f) =>
-          log.info("I matched!")
           calculateAndSendPaxSplits(sender, f.ArrivalPortCode, f.CarrierCode, f.VoyageNumber,
             f.scheduleArrivalDateTime.get, f)
         case None => sender ! FlightNotFound
@@ -191,14 +191,19 @@ class ResponseCollationActor(childActors: List[ActorRef], report: ReportVoyagePa
   var responses: List[VoyagePaxSplits] = List.empty[VoyagePaxSplits]
   var responseCount = 0
 
-  def receive = {
+  def receive = LoggingReceive {
     case "begin" =>
       log.info(s"Sending requests to the children ${childActors.length}")
-      childActors.foreach(ref => {
-        log.info(s"Telling ${ref} to send me a report ${report}")
-        ref ! report
-      })
-      log.info("Sent requests")
+      if (childActors.isEmpty) {
+         log.info(s"No children to get responses for")
+         checkIfDoneAndDie()
+      } else {
+        childActors.foreach(ref => {
+          log.info(s"Telling ${ref} to send me a report ${report}")
+          ref ! report
+        })
+        log.info("Sent requests")
+      }
     case vpi: VoyagePaxSplits =>
       log.info(s"Got a response! $vpi")
       responseCount += 1

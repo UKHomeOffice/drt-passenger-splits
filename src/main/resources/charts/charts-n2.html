@@ -1,0 +1,108 @@
+<html>
+<script src="js/d3.min.js"></script>
+<script src="js/nv.d3.min.js" language="JavaScript"></script>
+<link href="css/nv.d3.css" rel="stylesheet">
+
+<script language="JavaScript">
+    d3.json('data.json', function (rawdata) {
+        function getByDesk(data, queueType) {
+            return data.map(function (d) {
+                var queueInfo = d.paxSplits.filter(function (ps) {
+                    return ps.queueType === queueType
+                })
+                return queueInfo.map(function(qi){
+                    return {
+                        "arrivalTime": new Date(d.scheduledArrivalDateTime),
+                        "value": qi.paxCount,
+                        "passengerType": qi.passengerType
+                    }
+                })
+            })
+        }
+
+        var dataByDesk = getByDesk(rawdata, "desk")
+        dataByDesk =  [].concat.apply([], dataByDesk);
+        console.log("bydesk", dataByDesk)
+        var ordered = rawdata.sort(function (a, b) {
+            var adate = new Date(a.scheduledArrivalDateTime + "Z")
+            var bdate = new Date(b.scheduledArrivalDateTime + "Z")
+            return adate - bdate;
+        })
+        var rawdata = ordered.slice(0, 40);
+        var dates = rawdata.map(function (d) {
+            var d = new Date(d.scheduledArrivalDateTime + "Z")
+            return d.getTime()
+        });
+        var minDate = Math.min.apply(null, dates);
+        var maxDate = Math.max.apply(null, dates);
+        var numberOfMinutes = (maxDate - minDate) / (60000)
+        var shouldPadLength = numberOfMinutes + 200
+        console.log("minDate", minDate)
+        console.log("maxDate", maxDate)
+        console.log("numberOfMinutes", numberOfMinutes)
+        console.log("shouldPadTo", shouldPadLength)
+        var data = rawdata.map(function (d) {
+            var date = new Date(d.scheduledArrivalDateTime + "Z");
+            var numberOfPeoplePerChunk = 20
+            console.log("Start time ", date.getTime())
+            var startIndex = (date.getTime() - minDate) / 60000;
+            var numberOfChunks = Math.floor(Math.max(d.totalPaxCount / numberOfPeoplePerChunk, 1));
+            var chunks = new Array(numberOfChunks).fill(numberOfPeoplePerChunk);
+            chunks.push(d.totalPaxCount % numberOfPeoplePerChunk)
+            var endRange = new Array(shouldPadLength - (chunks.length + startIndex)).fill(0);
+            console.log("Will pad ", startIndex, chunks.length, endRange.length)
+            var head = new Array(startIndex).fill(0)
+            var values = head.concat(chunks.concat(endRange));
+            console.log("padded length", values.length)
+            var timeAndValues = values.map(function (v, i) {
+                var datenew = new Date(date);
+                datenew.setMinutes(date.getMinutes() + i);
+                return [datenew, v]
+            });
+            return {
+                "key": d.carrierCode + d.voyageNumber,
+                "values": timeAndValues
+            }
+        });
+        console.log(data);
+        nv.addGraph(function () {
+            var chart = nv.models.stackedAreaChart()
+                    .margin({right: 100})
+                    .x(function (d) {
+                        return d[0]
+                    })   //We can modify the data accessor functions...
+                    .y(function (d) {
+                        return d[1]
+                    })   //...in case your data is formatted differently.
+                    .useInteractiveGuideline(true)    //Tooltips which show all data points. Very nice!
+                    .rightAlignYAxis(true)      //Let's move the y-axis to the right side.
+                    .showControls(true)       //Allow user to choose 'Stacked', 'Stream', 'Expanded' mode.
+                    .style("stream")
+                    //                    .groupSpacing(0.1)
+                    .clipEdge(true);
+
+            //Format x-axis labels with custom function.
+            chart.xAxis
+                    .tickFormat(function (d) {
+                        var date = new Date(d);
+                        return date.toISOString();
+                    });
+
+            chart.yAxis
+                    .tickFormat(d3.format(',.2f'));
+
+            d3.select('#chart svg')
+                    .datum(data)
+                    .call(chart);
+
+            nv.utils.windowResize(chart.update);
+
+            return chart;
+        });
+    });
+
+</script>
+<div id="chart">
+    <svg></svg>
+</div>
+</html>

@@ -77,6 +77,9 @@ class s3AkkaStreams extends TestKit(ActorSystem()) with SpecificationLike {
 
     "can unzip content of a file" in {
       val poller = new SimpleS3Poller with CoreActors {
+
+        def createS3client: AmazonS3AsyncClient = new AmazonS3AsyncClient()
+
         implicit def system = test.system
 
       }

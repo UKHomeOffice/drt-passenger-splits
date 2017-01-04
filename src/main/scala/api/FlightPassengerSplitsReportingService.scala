@@ -57,7 +57,7 @@ class FlightPassengerSplitsReportingService(system: ActorSystem, flightInfoPaxSp
 
   import scala.concurrent.duration._
 
-  implicit val timeout = Timeout(2.seconds)
+  implicit val timeout = Timeout(50.seconds)
 
 
   import ReportingJsonProtocol._

@@ -1,6 +1,7 @@
 package core
 
-import akka.actor.{Props, ActorSystem}
+import akka.actor.{ActorSystem, Props}
+import akka.event.LoggingAdapter
 
 /**
  * Core is type containing the ``system: ActorSystem`` member. This enables us to use it in our
@@ -30,14 +31,18 @@ trait BootedCore extends Core {
 
 }
 
+
+trait CoreLogging {
+  def log: LoggingAdapter
+}
 /**
  * This trait contains the actors that make up our application; it can be mixed in with
  * ``BootedCore`` for running code or ``TestKit`` for unit and integration tests.
  */
-trait CoreActors {
+trait CoreActors extends CoreLogging {
   this: Core =>
 //  val httpPollingActor = system.actorOf(Props[HttpConsumerActor])
   val flightPassengerReporter = system.actorOf(Props[PassengerInfoByPortRouter], name="flight-pax-reporter")
   val messenger    = system.actorOf(Props[MessengerActor])
-
+  val log = system.log
 }

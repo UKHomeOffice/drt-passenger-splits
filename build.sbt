@@ -22,15 +22,17 @@ mainClass in (Compile, run) := Some("Rest")
 Defaults.itSettings
 lazy val `it-config-sbt-project` = project.in(file(".")).configs(IntegrationTest)
 
+val akkaVersion = "2.4.16"
+
 libraryDependencies ++= Seq(
   "com.github.seratch" %% "awscala" % "0.5.+",
-  "com.typesafe.akka" %% "akka-actor" % "2.4.6",
-  "com.typesafe.akka" %% "akka-camel" % "2.4.6",
+  "com.typesafe.akka" %% "akka-actor" % akkaVersion,
+  "com.typesafe.akka" %% "akka-camel" % akkaVersion,
   "com.mfglabs" %% "commons-aws" % "0.10.0",
   "com.mfglabs" %% "akka-stream-extensions" % "0.10.0",
-  "com.typesafe.akka" %% "akka-slf4j" % "2.4.6",
-  "ch.qos.logback" % "logback-classic" % "1.0.13",
   "com.typesafe.akka" %% "akka-stream-contrib" % "0.2",
+  "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
+  "ch.qos.logback" % "logback-classic" % "1.0.13",
   "io.spray" %% "spray-can" % sprayVersion,
   "io.spray" %% "spray-client" % sprayVersion,
   "io.spray" %% "spray-routing" % sprayVersion,
@@ -39,7 +41,7 @@ libraryDependencies ++= Seq(
   "org.specs2" %% "specs2-scalacheck" % "3.8.4" % "it,test",
   //https://groups.google.com/forum/#!topic/spray-user/2T6SBp4OJeI for this exclusion
   "io.spray" %% "spray-testkit" % sprayVersion % "test" exclude("org.specs2", "specs2_2.11"),
-  "com.typesafe.akka" %% "akka-testkit" % "2.4.6" % "it,test",
+  "com.typesafe.akka" %% "akka-testkit" % akkaVersion % "it,test",
   "com.typesafe" % "config" % "1.3.0",
   "com.novocode" % "junit-interface" % "0.7" % "test->default"
 )
